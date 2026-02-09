@@ -14,15 +14,20 @@ new class extends Component
 
     public string $unit = 'pcs';
 
+    public ?float $unit_price = null;
+
     public string $description = '';
 
     public ?int $departmentId = null;
 
     public function mount(): void
     {
-        $this->departmentId = request()->route('department') instanceof \Lastdino\Monox\Models\Department
-            ? request()->route('department')->id
-            : request()->route('department');
+        $department = request()->route('department');
+        if ($department instanceof \Lastdino\Monox\Models\Department) {
+            $this->departmentId = $department->id;
+        } elseif ($department) {
+            $this->departmentId = (int) $department;
+        }
 
         $this->type = $this->types[0]['value'] ?? 'part';
     }
@@ -31,9 +36,12 @@ new class extends Component
     {
         $id = $this->departmentId;
         if (! $id) {
-            $id = request()->route('department') instanceof \Lastdino\Monox\Models\Department
-                ? request()->route('department')->id
-                : request()->route('department');
+            $department = request()->route('department');
+            if ($department instanceof \Lastdino\Monox\Models\Department) {
+                $id = $department->id;
+            } elseif ($department) {
+                $id = (int) $department;
+            }
         }
 
         return \Lastdino\Monox\Models\Department::find($id)?->getItemTypes() ?? [
@@ -52,18 +60,20 @@ new class extends Component
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:'.$typeValues],
             'unit' => ['required', 'string', 'max:50'],
+            'unit_price' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
         ];
     }
 
     public function save(): void
     {
+        $this->unit_price = $this->unit_price === '' ? null : $this->unit_price;
         $validated = $this->validate();
         $validated['department_id'] = $this->departmentId;
 
         Item::create($validated);
 
-        $this->reset('code', 'name', 'description');
+        $this->reset('code', 'name', 'unit_price', 'description');
         $this->type = $this->types[0]['value'] ?? 'part';
 
         Flux::modal('create-item')->close();
@@ -94,6 +104,8 @@ new class extends Component
 
                 <flux:input wire:model="unit" label="単位" placeholder="pcs" />
             </div>
+
+            <flux:input wire:model="unit_price" type="number" step="0.0001" label="単価" placeholder="0.00" />
 
             <flux:textarea wire:model="description" label="説明" />
 

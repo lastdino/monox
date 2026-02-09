@@ -30,7 +30,6 @@ class ProductionRecord extends Model
         'total_paused_seconds',
         'note',
     ];
-
     protected $casts = [
         'setup_started_at' => 'datetime',
         'setup_finished_at' => 'datetime',

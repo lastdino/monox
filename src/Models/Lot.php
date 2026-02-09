@@ -42,8 +42,20 @@ class Lot extends Model
         return $this->hasMany(StockMovement::class);
     }
 
+    public function getStockAtDate(\DateTimeInterface $date): float
+    {
+        return (float) $this->stockMovements()
+            ->where('moved_at', '<=', $date)
+            ->sum('quantity');
+    }
+
     public function getCurrentStockAttribute(): float
     {
-        return (float) $this->stockMovements()->sum('quantity');
+        return $this->getStockAtDate(now());
+    }
+
+    public function productionOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProductionOrder::class);
     }
 }

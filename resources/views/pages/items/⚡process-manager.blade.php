@@ -16,6 +16,8 @@ new class extends Component
 
     public ?float $standard_time_minutes = null;
 
+    public ?float $work_in_process_unit_price = null;
+
     public string $description = '';
 
     public $template_image;
@@ -34,6 +36,7 @@ new class extends Component
         $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'standard_time_minutes' => ['nullable', 'numeric', 'min:0'],
+            'work_in_process_unit_price' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string', 'max:1000'],
             'template_image' => ['nullable', 'image', 'max:2048'],
         ]);
@@ -43,6 +46,7 @@ new class extends Component
         $data = [
             'name' => $this->name,
             'standard_time_minutes' => $this->standard_time_minutes,
+            'work_in_process_unit_price' => $this->work_in_process_unit_price,
             'description' => $this->description,
             'sort_order' => $maxOrder + 10,
             'share_template_with_previous' => $this->share_template_with_previous,
@@ -57,7 +61,7 @@ new class extends Component
             $this->item->processes()->create($data);
         }
 
-        $this->reset(['name', 'standard_time_minutes', 'description', 'template_image']);
+        $this->reset(['name', 'standard_time_minutes', 'work_in_process_unit_price', 'description', 'template_image']);
         $this->item->load('processes');
 
         Flux::toast('工程を追加しました。');
@@ -69,6 +73,7 @@ new class extends Component
         $this->editingProcessId = $id;
         $this->name = $process->name;
         $this->standard_time_minutes = $process->standard_time_minutes;
+        $this->work_in_process_unit_price = $process->work_in_process_unit_price;
         $this->description = $process->description ?? '';
         $this->share_template_with_previous = $process->share_template_with_previous;
         $this->template_image = null;
@@ -79,6 +84,7 @@ new class extends Component
         $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'standard_time_minutes' => ['nullable', 'numeric', 'min:0'],
+            'work_in_process_unit_price' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string', 'max:1000'],
             'template_image' => ['nullable', 'image', 'max:2048'],
         ]);
@@ -87,6 +93,7 @@ new class extends Component
         $data = [
             'name' => $this->name,
             'standard_time_minutes' => $this->standard_time_minutes,
+            'work_in_process_unit_price' => $this->work_in_process_unit_price,
             'description' => $this->description,
             'share_template_with_previous' => $this->share_template_with_previous,
         ];
@@ -107,7 +114,7 @@ new class extends Component
 
     public function cancelEdit(): void
     {
-        $this->reset(['name', 'standard_time_minutes', 'description', 'editingProcessId', 'template_image', 'share_template_with_previous']);
+        $this->reset(['name', 'standard_time_minutes', 'work_in_process_unit_price', 'description', 'editingProcessId', 'template_image', 'share_template_with_previous']);
     }
 
     public function removeProcess(int $id): void
@@ -163,9 +170,10 @@ new class extends Component
 
     <div class="space-y-4">
         <div class="grid grid-cols-1 gap-4 p-4 border rounded-lg bg-white dark:bg-zinc-800">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <flux:input wire:model="name" label="工程名" placeholder="例：切断、組立、検査" />
                 <flux:input wire:model="standard_time_minutes" type="number" step="0.1" label="標準時間 (分)" />
+                <flux:input wire:model="work_in_process_unit_price" type="number" step="0.0001" label="仕掛品単価" />
             </div>
             <flux:textarea wire:model="description" label="備考" rows="2" />
             <flux:checkbox wire:model="share_template_with_previous" label="前工程の記録用紙（画像）を共有する" />
@@ -185,7 +193,7 @@ new class extends Component
                 <flux:table.columns>
                     <flux:table.column>順序</flux:table.column>
                     <flux:table.column>工程名</flux:table.column>
-                    <flux:table.column>標準時間</flux:table.column>
+                    <flux:table.column>標準時間 / 単価</flux:table.column>
                     <flux:table.column></flux:table.column>
                 </flux:table.columns>
 
@@ -217,7 +225,8 @@ new class extends Component
                                 </div>
                             </flux:table.cell>
                             <flux:table.cell>
-                                {{ $process->standard_time_minutes ? number_format($process->standard_time_minutes, 1) . ' 分' : '-' }}
+                                <div class="text-sm">{{ $process->standard_time_minutes ? number_format($process->standard_time_minutes, 1) . ' 分' : '-' }}</div>
+                                <div class="text-xs text-zinc-500">{{ $process->work_in_process_unit_price ? '¥' . number_format($process->work_in_process_unit_price, 2) : '-' }}</div>
                             </flux:table.cell>
                             <flux:table.cell align="end">
                                 <div class="flex justify-end gap-1">

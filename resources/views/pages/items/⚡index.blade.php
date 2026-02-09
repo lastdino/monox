@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use Lastdino\Monox\Models\Department;
 use Lastdino\Monox\Models\Item;
 use Livewire\Attributes\On;
@@ -18,9 +19,13 @@ new class extends Component
 
     public bool $onlyInStock = false;
 
-    public function mount(Department $department): void
+    public function mount($department = null): void
     {
-        $this->departmentId = $department->id;
+        if ($department instanceof Department) {
+            $this->departmentId = $department->id;
+        } elseif ($department) {
+            $this->departmentId = (int) $department;
+        }
     }
 
     public function getTypesProperty(): array
@@ -66,11 +71,13 @@ new class extends Component
                     ->orWhere('code', 'like', '%'.$this->search.'%');
             }))
             ->when($this->onlyInStock, function ($q) {
-                $q->where(function ($sq) {
-                    $sq->selectRaw('COALESCE(SUM(quantity), 0)')
+                $q->whereExists(function ($sq) {
+                    $sq->select(DB::raw(1))
                         ->from('monox_stock_movements')
-                        ->whereColumn('monox_items.id', 'monox_stock_movements.item_id');
-                }, '>', 0);
+                        ->whereColumn('monox_items.id', 'monox_stock_movements.item_id')
+                        ->groupBy('item_id')
+                        ->havingRaw('SUM(quantity) > 0');
+                });
             })
             ->latest()
             ->paginate(10);

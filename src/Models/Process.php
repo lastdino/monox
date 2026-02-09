@@ -20,6 +20,7 @@ class Process extends Model implements HasMedia
         'sort_order',
         'description',
         'standard_time_minutes',
+        'work_in_process_unit_price',
         'template_image_path',
         'share_template_with_previous',
     ];
@@ -27,6 +28,7 @@ class Process extends Model implements HasMedia
     protected $casts = [
         'sort_order' => 'integer',
         'standard_time_minutes' => 'float',
+        'work_in_process_unit_price' => 'float',
         'share_template_with_previous' => 'boolean',
     ];
 

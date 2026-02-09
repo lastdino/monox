@@ -41,6 +41,41 @@ class ProductionOrder extends Model
         return $this->belongsTo(Lot::class);
     }
 
+    public function currentProcess()
+    {
+        // 進行中のレコードがあればそれを優先
+        $inProgress = $this->productionRecords()
+            ->where('status', 'in_progress')
+            ->with('process')
+            ->first();
+
+        if ($inProgress) {
+            return $inProgress->process;
+        }
+
+        // 進行中がなければ、最後に完了した工程の次を探す
+        $lastCompleted = $this->productionRecords()
+            ->where('status', 'completed')
+            ->with('process')
+            ->get()
+            ->sortByDesc(fn ($record) => $record->process->sort_order)
+            ->first();
+
+        if ($lastCompleted) {
+            $next = $this->item->processes()
+                ->where('sort_order', '>', $lastCompleted->process->sort_order)
+                ->orderBy('sort_order')
+                ->first();
+
+            return $next ?: $lastCompleted->process;
+        }
+
+        // 何もなければ最初の工程
+        return $this->item->processes()
+            ->orderBy('sort_order')
+            ->first();
+    }
+
     public function productionRecords(): HasMany
     {
         return $this->hasMany(ProductionRecord::class);

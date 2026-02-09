@@ -19,7 +19,7 @@ new class extends Component
     public string $statusFilter = '';
 
     // Create Order Form
-    public ?int $item_id = null;
+    public  $item_id = '';
 
     public ?string $lot_number = null;
 
@@ -36,7 +36,7 @@ new class extends Component
     {
         return ProductionOrder::query()
             ->where('department_id', $this->departmentId)
-            ->with(['item', 'lot'])
+            ->with(['item.processes', 'lot', 'productionRecords.process'])
             ->when($this->search, function ($q) {
                 $q->whereHas('item', fn ($qi) => $qi->where('name', 'like', '%'.$this->search.'%'))
                     ->orWhereHas('lot', fn ($ql) => $ql->where('lot_number', 'like', '%'.$this->search.'%'));
@@ -84,13 +84,7 @@ new class extends Component
 
     public function items()
     {
-        return Item::where('department_id', $this->departmentId)
-            ->where(function ($q) {
-                $q->selectRaw('COALESCE(SUM(quantity), 0)')
-                    ->from('monox_stock_movements')
-                    ->whereColumn('monox_items.id', 'monox_stock_movements.item_id');
-            }, '>', 0)
-            ->get();
+        return Item::where('department_id', $this->departmentId)->get();
     }
 };
 ?>
@@ -119,6 +113,7 @@ new class extends Component
         <flux:table.columns>
             <flux:table.column>ID</flux:table.column>
             <flux:table.column>ステータス</flux:table.column>
+            <flux:table.column>工程</flux:table.column>
             <flux:table.column>品目</flux:table.column>
             <flux:table.column>ロット</flux:table.column>
             <flux:table.column>予定数</flux:table.column>
@@ -146,6 +141,18 @@ new class extends Component
                             @default
                                 <flux:badge color="zinc">{{ $order->status }}</flux:badge>
                         @endswitch
+                    </flux:table.cell>
+                    <flux:table.cell>
+                        @if ($process = $order->currentProcess())
+                            <div class="flex items-center gap-2">
+                                <flux:badge size="sm" variant="outline" color="zinc">
+                                    {{ $process->sort_order }}
+                                </flux:badge>
+                                <span class="text-sm">{{ $process->name }}</span>
+                            </div>
+                        @else
+                            <span class="text-sm text-zinc-400">-</span>
+                        @endif
                     </flux:table.cell>
                     <flux:table.cell>
                         <div class="font-medium">{{ $order->item->name }}</div>

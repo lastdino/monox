@@ -178,10 +178,22 @@ new class extends Component
                         <flux:table.cell class="whitespace-nowrap text-xs">{{ $movement->moved_at->format('Y-m-d H:i') }}</flux:table.cell>
                         <flux:table.cell>{{ $movement->lot?->lot_number ?? '-' }}</flux:table.cell>
                         <flux:table.cell>
-                            @if ($movement->type === 'in') <flux:badge color="green" size="sm">入庫</flux:badge>
-                            @elseif ($movement->type === 'out') <flux:badge color="orange" size="sm">出庫</flux:badge>
-                            @else <flux:badge color="blue" size="sm">調整</flux:badge>
-                            @endif
+                            @switch($movement->type)
+                                @case('in')
+                                    <flux:badge color="green" size="sm">入庫</flux:badge>
+                                    @break
+                                @case('out')
+                                    <flux:badge color="orange" size="sm">出庫</flux:badge>
+                                    @break
+                                @case('shipment')
+                                    <flux:badge color="blue" size="sm">出荷</flux:badge>
+                                    @break
+                                @case('adjustment')
+                                    <flux:badge color="zinc" size="sm">調整</flux:badge>
+                                    @break
+                                @default
+                                    <flux:badge color="zinc" size="sm">{{ $movement->type_label }}</flux:badge>
+                            @endswitch
                         </flux:table.cell>
                         <flux:table.cell :class="$movement->quantity > 0 ? 'text-green-600' : 'text-orange-600'">
                             {{ $movement->quantity > 0 ? '+' : '' }}{{ number_format($movement->quantity, 2) }}

@@ -18,11 +18,13 @@ class ProcessTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_PROC', 'name' => 'Dept Proc']);
         $item = Item::create([
             'code' => 'TEST-001',
             'name' => 'Test Item',
             'type' => 'part',
             'unit' => 'pcs',
+            'department_id' => $dept->id,
         ]);
 
         // Add a process

@@ -14,10 +14,12 @@ class PartnerTest extends TestCase
 
     public function test_it_can_create_a_partner()
     {
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_PARTNER', 'name' => 'Dept Partner']);
         $partner = Partner::create([
             'code' => 'P-001',
             'name' => 'Supplier A',
             'type' => 'supplier',
+            'department_id' => $dept->id,
         ]);
 
         expect($partner->code)->toBe('P-001')
@@ -30,10 +32,12 @@ class PartnerTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        Partner::create(['name' => 'Alpha Corp', 'code' => 'A001', 'type' => 'supplier']);
-        Partner::create(['name' => 'Beta Inc', 'code' => 'B001', 'type' => 'customer']);
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_PARTNER2', 'name' => 'Dept Partner 2']);
 
-        Livewire::test('monox.partners.index')
+        Partner::create(['name' => 'Alpha Corp', 'code' => 'A001', 'type' => 'supplier', 'department_id' => $dept->id]);
+        Partner::create(['name' => 'Beta Inc', 'code' => 'B001', 'type' => 'customer', 'department_id' => $dept->id]);
+
+        Livewire::test('monox::partners.index', ['department' => $dept])
             ->assertSee('Alpha Corp')
             ->assertSee('Beta Inc')
             ->set('search', 'Alpha')
@@ -46,7 +50,9 @@ class PartnerTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        Livewire::test('monox.partners.create')
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_PARTNER3', 'name' => 'Dept Partner 3']);
+
+        Livewire::test('monox::partners.create', ['department' => $dept])
             ->set('code', 'NEW-P')
             ->set('name', 'New Partner')
             ->set('type', 'supplier')
@@ -65,7 +71,9 @@ class PartnerTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        Livewire::test('monox.partners.create')
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_PARTNER4', 'name' => 'Dept Partner 4']);
+
+        Livewire::test('monox::partners.create', ['department' => $dept])
             ->set('code', '')
             ->call('save')
             ->assertHasErrors(['code' => 'required']);

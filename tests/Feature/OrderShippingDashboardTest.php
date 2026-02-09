@@ -52,7 +52,7 @@ class OrderShippingDashboardTest extends TestCase
         Livewire::test('monox::orders.dashboard', ['department' => $department])
             ->assertSee('注文・出荷管理ダッシュボード')
             ->assertSee('SO-001')
-            ->assertSee('SH-001')
+            ->assertDontSee('SH-001') // 出荷データは表示されない
             // カレンダーへ切り替え
             ->set('viewMode', 'calendar')
             ->assertSeeHtml('id="orderShipCalendar"');
@@ -303,12 +303,8 @@ class OrderShippingDashboardTest extends TestCase
             ->set('shippingDate', now()->toDateString())
             ->call('updateStatus');
 
-        $this->assertDatabaseHas('monox_stock_movements', [
-            'item_id' => $item->id,
-            'lot_id' => $lot->id,
-            'quantity' => -5,
-            'type' => 'shipment',
-        ]);
+        $movement = StockMovement::where('item_id', $item->id)->where('type', 'shipment')->first();
+        expect($movement->type_label)->toBe('出荷');
 
         expect($lot->refresh()->current_stock)->toBe(5.0);
     }

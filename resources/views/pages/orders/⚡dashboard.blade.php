@@ -259,86 +259,22 @@ new class extends Component
 
     public function unifiedEntries()
     {
-        $orders = SalesOrder::query()
+        return SalesOrder::query()
             ->where('department_id', $this->departmentId)
-            ->select([
-                'id',
-                'order_number as number',
-                'due_date as date',
-                'quantity',
-                'status',
-                DB::raw("'order' as entry_type"),
-                'item_id',
-                'partner_id',
-                'created_at',
-            ])
+            ->with(['item', 'partner'])
             ->when($this->search, function ($q) {
                 $q->where('order_number', 'like', '%'.$this->search.'%')
                     ->orWhereHas('partner', fn ($qp) => $qp->where('name', 'like', '%'.$this->search.'%'))
                     ->orWhereHas('item', fn ($qi) => $qi->where('name', 'like', '%'.$this->search.'%'));
             })
-            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter));
-
-        $shipments = Shipment::query()
-            ->where('department_id', $this->departmentId)
-            ->select([
-                'id',
-                'shipment_number as number',
-                'shipping_date as date',
-                'quantity',
-                'status',
-                DB::raw("'shipment' as entry_type"),
-                'item_id',
-                DB::raw('NULL as partner_id'), // Shipment doesn't have partner_id directly, but we can get it via salesOrder
-                'created_at',
-            ])
-            ->when($this->search, function ($q) {
-                $q->where('shipment_number', 'like', '%'.$this->search.'%')
-                    ->orWhereHas('salesOrder.partner', fn ($qp) => $qp->where('name', 'like', '%'.$this->search.'%'))
-                    ->orWhereHas('item', fn ($qi) => $qi->where('name', 'like', '%'.$this->search.'%'))
-                    ->orWhereHas('lot', fn ($ql) => $ql->where('lot_number', 'like', '%'.$this->search.'%'));
-            })
-            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter));
-
-        // Use union for database-level pagination and sorting
-        // Note: For complex relations, we might need to load them after getting the IDs or use a manual join
-        // But since we want to display partner name, we might need to join partners.
-
-        $query = $orders->union($shipments);
-
-        // Standard Laravel pagination doesn't play perfectly with unions in some cases,
-        // but it should work if we wrap it.
-        $results = DB::table(DB::raw("({$query->toSql()}) as unified"))
-            ->mergeBindings($query->getQuery())
-            ->orderBy('date', 'desc')
+            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->orderBy('due_date', 'desc')
             ->paginate(15);
-
-        // Hydrate models or manually load relations to get names/codes
-        $items = Item::whereIn('id', collect($results->items())->pluck('item_id'))->get()->keyBy('id');
-        $partners = Partner::whereIn('id', collect($results->items())->pluck('partner_id')->filter())->get()->keyBy('id');
-
-        // For shipments, we might need to get partner through SalesOrder.
-        // But let's simplify: if shipment, we can fetch salesOrder relation.
-        $shipmentIds = collect($results->items())->where('entry_type', 'shipment')->pluck('id');
-        $shipmentsWithRelations = Shipment::with(['salesOrder.partner', 'lot'])->whereIn('id', $shipmentIds)->get()->keyBy('id');
-
-        foreach ($results->items() as $item) {
-            $item->item_model = $items->get($item->item_id);
-            if ($item->entry_type === 'order') {
-                $item->partner_model = $partners->get($item->partner_id);
-            } else {
-                $s = $shipmentsWithRelations->get($item->id);
-                $item->partner_model = $s?->salesOrder?->partner;
-                $item->lot_model = $s?->lot;
-            }
-        }
-
-        return $results;
     }
 
     public function calendarEvents(): array
     {
-        $orders = SalesOrder::query()
+        return SalesOrder::query()
             ->where('department_id', $this->departmentId)
             ->select(['id', 'order_number', 'due_date', 'quantity'])
             ->whereNotNull('due_date')
@@ -350,23 +286,8 @@ new class extends Component
                     'start' => $o->due_date?->format('Y-m-d'),
                     'color' => '#2563eb',
                 ];
-            });
-
-        $ships = Shipment::query()
-            ->where('department_id', $this->departmentId)
-            ->select(['id', 'shipment_number', 'shipping_date', 'quantity'])
-            ->whereNotNull('shipping_date')
-            ->get()
-            ->map(function ($s) {
-                return [
-                    'id' => 'ship-'.$s->id,
-                    'title' => '出荷 '.($s->shipment_number ? '#'.$s->shipment_number.' ' : '').'('.$s->quantity.')',
-                    'start' => $s->shipping_date?->format('Y-m-d'),
-                    'color' => '#16a34a',
-                ];
-            });
-
-        return array_values(array_merge($orders->all(), $ships->all()));
+            })
+            ->all();
     }
 };
 ?>
@@ -376,6 +297,10 @@ new class extends Component
         <flux:heading size="xl">注文・出荷管理ダッシュボード</flux:heading>
 
         <div class="flex items-center gap-2">
+            <flux:button href="{{ route('monox.orders.trace', ['department' => $departmentId]) }}" variant="outline" icon="magnifying-glass">
+                受注トレース
+            </flux:button>
+
             <flux:modal.trigger name="create-order">
                 <flux:button variant="primary" icon="plus">受注登録</flux:button>
             </flux:modal.trigger>
@@ -409,28 +334,30 @@ new class extends Component
                 <flux:table.column>ステータス</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
-                @foreach($this->unifiedEntries() as $entry)
-                    <flux:table.row :key="$entry->entry_type . '-' . $entry->id">
+                @foreach($this->unifiedEntries() as $order)
+                    <flux:table.row :key="$order->id">
                         <flux:table.cell>
-                            <div class="font-mono">#{{ $entry->number }}</div>
-                            @if($entry->entry_type === 'shipment' && isset($entry->lot_model))
-                                <div class="text-xs text-zinc-500">ロット: {{ $entry->lot_model->lot_number }}</div>
-                            @endif
+                            <div class="font-mono">
+                                <flux:link href="{{ route('monox.orders.trace', ['department' => $departmentId, 'order_number' => $order->order_number]) }}" class="flex items-center gap-1">
+                                    #{{ $order->order_number }}
+                                    <flux:icon name="magnifying-glass" size="xs" class="text-zinc-400" />
+                                </flux:link>
+                            </div>
                         </flux:table.cell>
-                        <flux:table.cell>{{ $entry->partner_model?->name ?? '-' }}</flux:table.cell>
+                        <flux:table.cell>{{ $order->partner?->name ?? '-' }}</flux:table.cell>
                         <flux:table.cell>
-                            @if($entry->item_model)
-                                <div class="font-medium">{{ $entry->item_model->name }}</div>
-                                <div class="text-xs text-zinc-500">{{ $entry->item_model->code }}</div>
+                            @if($order->item)
+                                <div class="font-medium">{{ $order->item->name }}</div>
+                                <div class="text-xs text-zinc-500">{{ $order->item->code }}</div>
                             @else
                                 -
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell>{{ $entry->date ? \Illuminate\Support\Carbon::parse($entry->date)->format('Y-m-d') : '-' }}</flux:table.cell>
-                        <flux:table.cell>{{ number_format($entry->quantity, 2) }}</flux:table.cell>
+                        <flux:table.cell>{{ $order->due_date ? $order->due_date->format('Y-m-d') : '-' }}</flux:table.cell>
+                        <flux:table.cell>{{ number_format($order->quantity, 2) }}</flux:table.cell>
                         <flux:table.cell>
-                            <div class="cursor-pointer" wire:click="openStatusModal({{ $entry->id }}, '{{ $entry->entry_type }}', '{{ $entry->status }}', {{ $entry->quantity }})">
-                                @switch($entry->status)
+                            <div class="cursor-pointer" wire:click="openStatusModal({{ $order->id }}, 'order', '{{ $order->status }}', {{ $order->quantity }})">
+                                @switch($order->status)
                                     @case('pending')
                                         <flux:badge color="zinc" size="sm" icon="pencil-square" icon-trailing>未処理</flux:badge>
                                         @break
@@ -441,7 +368,7 @@ new class extends Component
                                         <flux:badge color="green" size="sm" icon="pencil-square" icon-trailing>出荷済み</flux:badge>
                                         @break
                                     @default
-                                        <flux:badge color="zinc" size="sm" icon="pencil-square" icon-trailing>{{ $entry->status }}</flux:badge>
+                                        <flux:badge color="zinc" size="sm" icon="pencil-square" icon-trailing>{{ $order->status }}</flux:badge>
                                 @endswitch
                             </div>
                         </flux:table.cell>

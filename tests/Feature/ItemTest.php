@@ -14,11 +14,13 @@ class ItemTest extends TestCase
 
     public function test_it_can_create_an_item()
     {
+        $department = \Lastdino\Monox\Models\Department::create(['code' => 'D_UNIT', 'name' => 'Dept Unit']);
         $item = Item::create([
             'code' => 'TEST-001',
             'name' => 'Test Item',
             'type' => 'part',
             'unit' => 'pcs',
+            'department_id' => $department->id,
         ]);
 
         expect($item->code)->toBe('TEST-001')

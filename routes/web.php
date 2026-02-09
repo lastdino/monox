@@ -13,10 +13,17 @@ Route::middleware(['web', 'auth', 'verified'])
 
         // 受注・出荷ダッシュボード
         Route::livewire('{department}/orders-shipments', 'monox::orders.dashboard')->name('monox.orders.dashboard');
+        Route::livewire('{department}/orders/trace', 'monox::orders.trace')->name('monox.orders.trace');
+
+        // 製造分析・ダッシュボード
+        Route::livewire('{department}/analytics', 'monox::production.analytics')->name('monox.production.analytics');
 
         // 製造記録関連
         Route::livewire('{department}/production', 'monox::production.index')->name('monox.production.index');
         Route::livewire('{department}/production/{order}/worksheet/{process?}', 'monox::production.worksheet')->name('monox.production.worksheet');
+
+        // 在庫・仕掛サマリー
+        Route::livewire('{department}/inventory/lot-summary', 'monox::inventory.lot-summary')->name('monox.inventory.lot-summary');
 
         // 設定関連
         Route::livewire('processes/{process}/annotations', 'monox::processes.annotations')->name('monox.processes.annotations');

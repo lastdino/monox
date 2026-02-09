@@ -14,8 +14,9 @@ class BomTest extends TestCase
 
     public function test_it_can_define_a_bom_relationship()
     {
-        $parent = Item::create(['name' => 'Assembly', 'code' => 'ASM-001', 'type' => 'product', 'unit' => 'pcs']);
-        $child = Item::create(['name' => 'Part', 'code' => 'PRT-001', 'type' => 'part', 'unit' => 'pcs']);
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_BOM', 'name' => 'Dept BOM']);
+        $parent = Item::create(['name' => 'Assembly', 'code' => 'ASM-001', 'type' => 'product', 'unit' => 'pcs', 'department_id' => $dept->id]);
+        $child = Item::create(['name' => 'Part', 'code' => 'PRT-001', 'type' => 'part', 'unit' => 'pcs', 'department_id' => $dept->id]);
 
         $parent->components()->attach($child->id, ['quantity' => 2]);
 
@@ -25,8 +26,9 @@ class BomTest extends TestCase
 
     public function test_it_can_access_parent_items_from_child()
     {
-        $parent = Item::create(['name' => 'Assembly', 'code' => 'ASM-001', 'type' => 'product', 'unit' => 'pcs']);
-        $child = Item::create(['name' => 'Part', 'code' => 'PRT-001', 'type' => 'part', 'unit' => 'pcs']);
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_BOM2', 'name' => 'Dept BOM 2']);
+        $parent = Item::create(['name' => 'Assembly', 'code' => 'ASM-001', 'type' => 'product', 'unit' => 'pcs', 'department_id' => $dept->id]);
+        $child = Item::create(['name' => 'Part', 'code' => 'PRT-001', 'type' => 'part', 'unit' => 'pcs', 'department_id' => $dept->id]);
 
         $parent->components()->attach($child->id, ['quantity' => 5]);
 
@@ -39,8 +41,9 @@ class BomTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        $parent = Item::create(['name' => 'Parent', 'code' => 'P001', 'type' => 'product', 'unit' => 'pcs']);
-        $child = Item::create(['name' => 'Child', 'code' => 'C001', 'type' => 'part', 'unit' => 'pcs']);
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_BOM3', 'name' => 'Dept BOM 3']);
+        $parent = Item::create(['name' => 'Parent', 'code' => 'P001', 'type' => 'product', 'unit' => 'pcs', 'department_id' => $dept->id]);
+        $child = Item::create(['name' => 'Child', 'code' => 'C001', 'type' => 'part', 'unit' => 'pcs', 'department_id' => $dept->id]);
 
         Livewire::test('monox::items.bom-manager', ['item' => $parent])
             ->set('selectedChildId', $child->id)

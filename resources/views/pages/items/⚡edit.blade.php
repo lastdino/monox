@@ -15,7 +15,7 @@ new class extends Component
     public string $type = 'part';
 
     public string $unit = 'pcs';
-
+    public ?float $unit_price = null;
     public string $description = '';
 
     public bool $auto_inventory_update = false;
@@ -34,6 +34,7 @@ new class extends Component
         $this->name = $item->name;
         $this->type = $item->type;
         $this->unit = $item->unit;
+        $this->unit_price = $item->unit_price;
         $this->description = $item->description ?? '';
         $this->auto_inventory_update = $item->auto_inventory_update ?? false;
     }
@@ -52,6 +53,7 @@ new class extends Component
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:'.$typeValues],
             'unit' => ['required', 'string', 'max:50'],
+            'unit_price' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
             'auto_inventory_update' => ['boolean'],
         ];
@@ -59,6 +61,7 @@ new class extends Component
 
     public function save(): void
     {
+        $this->unit_price = $this->unit_price === '' ? null : $this->unit_price;
         $validated = $this->validate();
 
         $this->item->update($validated);
@@ -92,6 +95,8 @@ new class extends Component
 
                 <flux:input wire:model="unit" label="単位" placeholder="pcs" />
             </div>
+
+            <flux:input wire:model="unit_price" type="number" step="0.0001" label="単価" placeholder="0.00" />
 
             <flux:textarea wire:model="description" label="説明" />
 

@@ -19,6 +19,7 @@ class Item extends Model
         'name',
         'type',
         'unit',
+        'unit_price',
         'description',
         'department_id',
         'auto_inventory_update',
@@ -26,6 +27,7 @@ class Item extends Model
 
     protected $casts = [
         'auto_inventory_update' => 'boolean',
+        'unit_price' => 'float',
     ];
 
     public function getTypeLabelAttribute(): string

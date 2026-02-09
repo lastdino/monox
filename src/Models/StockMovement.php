@@ -40,6 +40,17 @@ class StockMovement extends Model
         return $this->belongsTo(Lot::class);
     }
 
+    public function getTypeLabelAttribute(): string
+    {
+        return match ($this->type) {
+            'in' => '入庫',
+            'out' => '出庫',
+            'shipment' => '出荷',
+            'adjustment' => '調整',
+            default => $this->type,
+        };
+    }
+
     protected function casts(): array
     {
         return [
