@@ -1,0 +1,73 @@
+<?php
+
+namespace Lastdino\Monox\Tests\Feature;
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Lastdino\Monox\Models\Partner;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+class PartnerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_it_can_create_a_partner()
+    {
+        $partner = Partner::create([
+            'code' => 'P-001',
+            'name' => 'Supplier A',
+            'type' => 'supplier',
+        ]);
+
+        expect($partner->code)->toBe('P-001')
+            ->and($partner->name)->toBe('Supplier A')
+            ->and($partner->type)->toBe('supplier');
+    }
+
+    public function test_it_can_list_partners_and_search()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Partner::create(['name' => 'Alpha Corp', 'code' => 'A001', 'type' => 'supplier']);
+        Partner::create(['name' => 'Beta Inc', 'code' => 'B001', 'type' => 'customer']);
+
+        Livewire::test('monox.partners.index')
+            ->assertSee('Alpha Corp')
+            ->assertSee('Beta Inc')
+            ->set('search', 'Alpha')
+            ->assertSee('Alpha Corp')
+            ->assertDontSee('Beta Inc');
+    }
+
+    public function test_it_can_create_a_partner_via_the_create_component()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Livewire::test('monox.partners.create')
+            ->set('code', 'NEW-P')
+            ->set('name', 'New Partner')
+            ->set('type', 'supplier')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertDispatched('partner-created');
+
+        $this->assertDatabaseHas('monox_partners', [
+            'code' => 'NEW-P',
+            'name' => 'New Partner',
+        ]);
+    }
+
+    public function test_it_validates_partner_creation()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Livewire::test('monox.partners.create')
+            ->set('code', '')
+            ->call('save')
+            ->assertHasErrors(['code' => 'required']);
+    }
+}

@@ -1,0 +1,28 @@
+{
+    "name": "lastdino/monox",
+    "description": "A new Laravel package.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "lastdino"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Lastdino\\Monox\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Lastdino\\Monox\\MonoxServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.4",
+        "laravel/framework": "^12.0",
+        "livewire/livewire": "^4.0"
+    }
+}
