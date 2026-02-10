@@ -67,7 +67,7 @@ new class extends Component
             $lotId = $lot->id;
         }
 
-        ProductionOrder::create([
+        $order = ProductionOrder::create([
             'department_id' => $this->departmentId,
             'item_id' => $this->item_id,
             'lot_id' => $lotId,
@@ -80,6 +80,11 @@ new class extends Component
         Flux::modal('create-order')->close();
 
         Flux::toast('製造指図を作成しました。');
+
+        $this->redirect(route('monox.production.travel-sheet', [
+            'department' => $this->departmentId,
+            'order' => $order->id,
+        ]), navigate: true);
     }
 
     public function items()
@@ -162,7 +167,8 @@ new class extends Component
                     <flux:table.cell>{{ number_format($order->target_quantity, 2) }} {{ $order->item->unit }}</flux:table.cell>
                     <flux:table.cell>{{ $order->created_at->format('Y-m-d') }}</flux:table.cell>
                     <flux:table.cell align="end">
-                        <flux:button href="{{ route('monox.production.worksheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="document-text" square />
+                        <flux:button href="{{ route('monox.production.travel-sheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="printer" square tooltip="トラベルシート" />
+                        <flux:button href="{{ route('monox.production.worksheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="document-text" square tooltip="ワークシート" />
                     </flux:table.cell>
                 </flux:table.row>
             @endforeach

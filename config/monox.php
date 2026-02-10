@@ -60,4 +60,17 @@ return [
     'tables' => [
         'departments' => 'monox_departments',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Production Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure settings related to production processing.
+    |
+    */
+    'production' => [
+        // Columns to search for worker when scanning worker code
+        'worker_scan_columns' => ['id', 'email'],
+    ],
 ];

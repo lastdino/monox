@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['web', 'auth', 'verified'])
+Route::middleware(['web'])
     ->prefix(config('monox.routes.prefix'))
     ->group(function () {
         Route::scopeBindings();
@@ -20,7 +20,8 @@ Route::middleware(['web', 'auth', 'verified'])
 
         // 製造記録関連
         Route::livewire('{department}/production', 'monox::production.index')->name('monox.production.index');
-        Route::livewire('{department}/production/{order}/worksheet/{process?}', 'monox::production.worksheet')->name('monox.production.worksheet');
+        Route::livewire('{department}/production/{order}/worksheet', 'monox::production.worksheet')->name('monox.production.worksheet');
+        Route::livewire('{department}/production/{order}/travel-sheet', 'monox::production.travel-sheet')->name('monox.production.travel-sheet');
 
         // 在庫・仕掛サマリー
         Route::livewire('{department}/inventory/lot-summary', 'monox::inventory.lot-summary')->name('monox.inventory.lot-summary');

@@ -7,12 +7,14 @@ use Lastdino\Monox\Models\ProductionAnnotationField;
 use Lastdino\Monox\Models\ProductionAnnotationValue;
 use Lastdino\Monox\Models\ProductionOrder;
 use Lastdino\Monox\Models\ProductionRecord;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new class extends Component
 {
     public ProductionOrder $order;
 
+    #[Url(as: 'process')]
     public $currentProcessId;
 
     public $records = [];
@@ -44,13 +46,13 @@ new class extends Component
 
     public $defective_quantity = 0;
 
-    public function mount(ProductionOrder $order, ?int $process = null): void
+    public function mount(ProductionOrder $order): void
     {
         $this->order = $order->load(['item.processes', 'productionRecords.annotationValues', 'lot']);
         $this->records = $this->order->productionRecords->keyBy('process_id');
 
-        if ($process && $this->order->item->processes->contains('id', $process)) {
-            $this->currentProcessId = $process;
+        if ($this->currentProcessId && $this->order->item->processes->contains('id', $this->currentProcessId)) {
+            // Already set by #[Url]
         } elseif ($this->order->item->processes->isNotEmpty()) {
             $this->currentProcessId = $this->order->item->processes->first()->id;
         }
@@ -66,13 +68,6 @@ new class extends Component
     public function selectProcess(int $processId): void
     {
         $this->currentProcessId = $processId;
-
-        // URLを更新（ブラウザの履歴を書き換える）
-        $this->js("history.pushState(null, '', '".route('monox.production.worksheet', [
-            'department' => $this->order->department_id,
-            'order' => $this->order->id,
-            'process' => $processId,
-        ])."')");
     }
 
     public function getProcessProperty()
@@ -569,12 +564,22 @@ new class extends Component
         $this->record->load('annotationValues');
     }
 
+    #[\Livewire\Attributes\On('qr-scanned')]
     public function scanWorker(): void
     {
-        // 簡易実装：ユーザーIDまたはメールで検索
-        $user = \App\Models\User::where('id', $this->worker_code)
-            ->orWhere('email', $this->worker_code)
-            ->first();
+        $columns = config('monox.production.worker_scan_columns', ['id', 'email']);
+
+        $query = \App\Models\User::query();
+
+        foreach ($columns as $index => $column) {
+            if ($index === 0) {
+                $query->where($column, $this->worker_code);
+            } else {
+                $query->orWhere($column, $this->worker_code);
+            }
+        }
+
+        $user = $query->first();
 
         if ($user) {
             $this->currentWorker = $user;
@@ -599,6 +604,8 @@ new class extends Component
                     <flux:badge color="green" icon="user" variant="outline">{{ $currentWorker->name }}</flux:badge>
                 @endif
                 <flux:input wire:model.live="worker_code" wire:keydown.enter="scanWorker" placeholder="作業者コードをスキャン..." class="w-48" />
+                <livewire:monox_component::qr-scanner wire:model.live="worker_code"/>
+
             </div>
             <flux:button href="{{ route('monox.production.index', ['department' => $order->department_id]) }}" variant="ghost" icon="chevron-left">一覧へ</flux:button>
         </div>
@@ -669,7 +676,7 @@ new class extends Component
 
                     @if($effectiveMedia)
                         <div class="relative inline-block w-full border rounded overflow-hidden">
-                            <img src="{{ route('monox.media.show', $effectiveMedia) }}" class="w-full h-auto" />
+                            <img src="{{ route('monox.media.show', $effectiveMedia) }}" class="w-full h-auto" alt=""/>
 
                             {{-- 共有されている前工程すべてのアノテーションを表示 --}}
                             @if($this->process->share_template_with_previous)

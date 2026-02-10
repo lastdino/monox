@@ -2,9 +2,9 @@
 
 namespace Lastdino\Monox;
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
-use Illuminate\Support\Facades\Route;
 
 class MonoxServiceProvider extends ServiceProvider
 {
@@ -27,7 +27,6 @@ class MonoxServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'monox');
 
-
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__.'/../resources/views' => resource_path('views/vendor/monox'),
@@ -45,7 +44,7 @@ class MonoxServiceProvider extends ServiceProvider
 
         $this->registerLivewireComponents();
 
-        $this->app->booted(function() {
+        $this->app->booted(function () {
             if (Route::hasMacro('livewire')) {
                 $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
             }
@@ -54,6 +53,7 @@ class MonoxServiceProvider extends ServiceProvider
 
     protected function registerLivewireComponents(): void
     {
+        Livewire::addNamespace('monox_component', __DIR__.'/../resources/views/components');
         Livewire::addNamespace('monox', __DIR__.'/../resources/views/pages');
 
         // もし公開されたビューがあれば、そちらを優先するようにLivewireコンポーネントを再登録
@@ -62,6 +62,13 @@ class MonoxServiceProvider extends ServiceProvider
             $files = array_diff(scandir($publishedPath), ['.', '..']);
             if (count($files) > 0) {
                 Livewire::addNamespace('monox', $publishedPath);
+            }
+        }
+        $publishedPath = resource_path('views/vendor/monox/components');
+        if (is_dir($publishedPath)) {
+            $files = array_diff(scandir($publishedPath), ['.', '..']);
+            if (count($files) > 0) {
+                Livewire::addNamespace('monox_component', $publishedPath);
             }
         }
     }
