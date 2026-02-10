@@ -23,12 +23,12 @@ new class extends Component
 
     public string $note = '';
 
-    public function mount($department_id): void
+    public function mount($department): void
     {
-        if ($department_id instanceof \Illuminate\Database\Eloquent\Model) {
-            $this->departmentId = $department_id->getKey();
+        if ($department instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department->getKey();
         } else {
-            $this->departmentId = (int) $department_id;
+            $this->departmentId = (int) $department;
         }
     }
 

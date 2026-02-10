@@ -15,8 +15,8 @@ new class extends Component
             abort(404);
         }
 
-        $this->department = $department_id;
-        $this->types = $department_id->getItemTypes();
+        $this->department = $department;
+        $this->types = $department->getItemTypes();
     }
 
     public function addType(): void
