@@ -21,6 +21,6 @@ class ItemType extends Model
 
     public function department(): BelongsTo
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(config('monox.models.department', Department::class));
     }
 }
