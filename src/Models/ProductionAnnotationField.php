@@ -24,6 +24,7 @@ class ProductionAnnotationField extends Model
         'target_value',
         'min_value',
         'max_value',
+        'is_optional',
         'linked_item_id',
         'related_field_id',
     ];
@@ -36,6 +37,7 @@ class ProductionAnnotationField extends Model
         'target_value' => 'float',
         'min_value' => 'float',
         'max_value' => 'float',
+        'is_optional' => 'boolean',
         'linked_item_id' => 'integer',
         'related_field_id' => 'integer',
     ];

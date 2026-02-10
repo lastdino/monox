@@ -11,6 +11,11 @@ class SalesOrder extends Model
 {
     use HasFactory;
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_SHIPPED = 'shipped';
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $table = 'monox_sales_orders';
 
     protected $fillable = [

@@ -20,6 +20,7 @@ class Item extends Model
         'type',
         'unit',
         'unit_price',
+        'inventory_alert_quantity',
         'description',
         'department_id',
         'auto_inventory_update',
@@ -28,6 +29,7 @@ class Item extends Model
     protected $casts = [
         'auto_inventory_update' => 'boolean',
         'unit_price' => 'float',
+        'inventory_alert_quantity' => 'float',
     ];
 
     public function getTypeLabelAttribute(): string

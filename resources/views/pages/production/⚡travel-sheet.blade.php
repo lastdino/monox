@@ -87,6 +87,7 @@ new #[Layout('monox::layouts.print')] class extends Component
                         <th class="border border-black px-2 py-1 w-12 text-center">#</th>
                         <th class="border border-black px-2 py-1 w-20 text-center">QR</th>
                         <th class="border border-black px-2 py-1">工程名 / Process</th>
+                        <th class="border border-black px-2 py-1 w-24 text-center">完品数 / Good</th>
                         <th class="border border-black px-2 py-1 w-28 text-center">着手印</th>
                         <th class="border border-black px-2 py-1 w-28 text-center">完了印</th>
                         <th class="border border-black px-2 py-1">備考 / Note</th>
@@ -95,8 +96,12 @@ new #[Layout('monox::layouts.print')] class extends Component
                 <tbody>
                     @php
                         $processParam = config('monox.production.worksheet_process_parameter', 'process');
+                        $records = $order->productionRecords->keyBy('process_id');
                     @endphp
                     @forelse($order->item->processes as $process)
+                        @php
+                            $record = $records->get($process->id);
+                        @endphp
                         <tr>
                             <td class="border border-black p-2 text-center text-base">{{ $process->sort_order }}</td>
                             <td class="border border-black p-1 text-center">
@@ -109,13 +114,16 @@ new #[Layout('monox::layouts.print')] class extends Component
                                 </div>
                             </td>
                             <td class="border border-black p-2 font-medium text-base">{{ $process->name }}</td>
+                            <td class="border border-black p-2 text-center text-base font-bold">
+                                {{ $record && $record->good_quantity ? number_format($record->good_quantity) : '' }}
+                            </td>
                             <td class="border border-black p-2"></td>
                             <td class="border border-black p-2"></td>
                             <td class="border border-black p-2 text-xs"></td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="border border-black p-4 text-center text-gray-500">工程が設定されていません。</td>
+                            <td colspan="7" class="border border-black p-4 text-center text-gray-500">工程が設定されていません。</td>
                         </tr>
                     @endforelse
                 </tbody>

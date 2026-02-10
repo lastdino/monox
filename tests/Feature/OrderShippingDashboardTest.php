@@ -50,7 +50,7 @@ class OrderShippingDashboardTest extends TestCase
 
         // 一覧表示
         Livewire::test('monox::orders.dashboard', ['department' => $department])
-            ->assertSee('注文・出荷管理ダッシュボード')
+            ->assertSee('管理ダッシュボード')
             ->assertSee('SO-001')
             ->assertDontSee('SH-001') // 出荷データは表示されない
             // カレンダーへ切り替え
@@ -307,5 +307,77 @@ class OrderShippingDashboardTest extends TestCase
         expect($movement->type_label)->toBe('出荷');
 
         expect($lot->refresh()->current_stock)->toBe(5.0);
+    }
+
+    public function test_it_can_cancel_an_order()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $department = Department::create(['code' => 'D001', 'name' => 'Dept 1']);
+        $item = Item::create(['name' => 'Product X', 'code' => 'PX', 'type' => 'product', 'unit' => 'pcs', 'department_id' => $department->id]);
+        $partner = Partner::create(['code' => 'C001', 'name' => 'Customer A', 'type' => 'customer', 'department_id' => $department->id]);
+
+        $order = SalesOrder::create([
+            'department_id' => $department->id,
+            'partner_id' => $partner->id,
+            'item_id' => $item->id,
+            'order_number' => 'SO-101',
+            'quantity' => 10,
+            'status' => 'pending',
+            'order_date' => now(),
+        ]);
+
+        Livewire::test('monox::orders.dashboard', ['department' => $department])
+            ->call('openStatusModal', $order->id, 'order', 'pending', 10)
+            ->set('editingStatus', 'cancelled')
+            ->call('updateStatus');
+
+        $this->assertEquals('cancelled', $order->refresh()->status);
+    }
+
+    public function test_cancelled_orders_are_excluded_from_analytics()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $department = Department::create(['code' => 'D001', 'name' => 'Dept 1']);
+        $item = Item::create(['name' => 'Product X', 'code' => 'PX', 'type' => 'product', 'unit' => 'pcs', 'department_id' => $department->id]);
+        $partner = Partner::create(['code' => 'C001', 'name' => 'Customer A', 'type' => 'customer', 'department_id' => $department->id]);
+
+        // Cancelled order (overdue)
+        SalesOrder::create([
+            'department_id' => $department->id,
+            'partner_id' => $partner->id,
+            'item_id' => $item->id,
+            'order_number' => 'SO-CANCELLED',
+            'quantity' => 10,
+            'status' => 'cancelled',
+            'due_date' => now()->subDays(1),
+            'order_date' => now()->subDays(2),
+        ]);
+
+        // Active order (overdue)
+        SalesOrder::create([
+            'department_id' => $department->id,
+            'partner_id' => $partner->id,
+            'item_id' => $item->id,
+            'order_number' => 'SO-ACTIVE',
+            'quantity' => 5,
+            'status' => 'pending',
+            'due_date' => now()->subDays(1),
+            'order_date' => now()->subDays(2),
+        ]);
+
+        $component = Livewire::test('monox::production.analytics', ['department' => $department]);
+
+        $overdueOrders = $component->instance()->overdueOrders();
+        $this->assertCount(1, $overdueOrders);
+        $this->assertEquals('SO-ACTIVE', $overdueOrders->first()->order_number);
+
+        $stockShortages = $component->instance()->stockShortages();
+        // Filter for this item
+        $itemShortage = collect($stockShortages)->firstWhere('id', $item->id);
+        $this->assertEquals(5, $itemShortage['required']);
     }
 }

@@ -67,6 +67,8 @@ new class extends Component
 
                 return [
                     'item_name' => $lot->item->name,
+                    'item_code' => $lot->item->code,
+                    'is_alert' => $lot->item->current_stock < $lot->item->inventory_alert_quantity,
                     'lot_number' => $lot->lot_number,
                     'stock' => $stock,
                     'wip' => $wipData,
@@ -142,7 +144,10 @@ new class extends Component
 
 <div class="space-y-6">
     <div class="flex items-center justify-between">
-        <flux:heading size="xl">ロット別在庫・仕掛一覧</flux:heading>
+        <div class="flex items-center gap-2">
+            <flux:heading size="xl">ロット別在庫・仕掛一覧</flux:heading>
+            <x-monox::nav-menu :department="$departmentId" />
+        </div>
 
         <div class="flex flex-col sm:flex-row items-end gap-4">
             <div><flux:input type="date" wire:model.live="targetDate" label="基準日" /></div>
@@ -169,7 +174,17 @@ new class extends Component
             <flux:table.rows>
                 @foreach ($this->rows as $row)
                     <flux:table.row>
-                        <flux:table.cell class="whitespace-nowrap">{{ $row['item_name'] }}</flux:table.cell>
+                        <flux:table.cell class="whitespace-nowrap">
+                            <div class="flex items-center gap-2">
+                                <div>
+                                    <div class="font-medium">{{ $row['item_name'] }}</div>
+                                    <div class="text-xs text-zinc-500">{{ $row['item_code'] }}</div>
+                                </div>
+                                @if($row['is_alert'])
+                                    <flux:badge color="red" size="sm" title="在庫アラート数を下回っています">警告: 在庫少</flux:badge>
+                                @endif
+                            </div>
+                        </flux:table.cell>
                         <flux:table.cell>{{ $row['lot_number'] }}</flux:table.cell>
                         <flux:table.cell align="end">{{ number_format($row['stock'], 2) }}</flux:table.cell>
                         @foreach ($this->processes as $process)

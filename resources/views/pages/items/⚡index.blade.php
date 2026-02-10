@@ -92,7 +92,10 @@ new class extends Component
 
 <div>
     <div class="flex items-center justify-between mb-6">
-        <flux:heading size="xl">品目マスター</flux:heading>
+        <div class="flex items-center gap-2">
+            <flux:heading size="xl">品目マスター</flux:heading>
+            <x-monox::nav-menu :department="$departmentId" />
+        </div>
 
         <div class="flex gap-2">
             <flux:modal.trigger name="type-manager">
@@ -125,6 +128,7 @@ new class extends Component
             <flux:table.column>品目コード</flux:table.column>
             <flux:table.column>品目名</flux:table.column>
             <flux:table.column>在庫数</flux:table.column>
+            <flux:table.column>アラート数</flux:table.column>
             <flux:table.column>種類</flux:table.column>
             <flux:table.column>単位</flux:table.column>
             <flux:table.column></flux:table.column>
@@ -137,6 +141,9 @@ new class extends Component
                     <flux:table.cell>{{ $item->name }}</flux:table.cell>
                     <flux:table.cell>
                         <flux:link class="cursor-pointer" wire:click="editItem({{ $item->id }}, 'inventory-manager')">{{ number_format($item->current_stock, 2) }}</flux:link>
+                    </flux:table.cell>
+                    <flux:table.cell>
+                        {{ number_format($item->inventory_alert_quantity, 2) }}
                     </flux:table.cell>
                     <flux:table.cell>{{ $item->type_label }}</flux:table.cell>
                     <flux:table.cell>{{ $item->unit }}</flux:table.cell>

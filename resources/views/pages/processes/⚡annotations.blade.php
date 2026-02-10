@@ -21,6 +21,8 @@ new class extends Component
 
     public string $type = 'number';
 
+    public bool $is_optional = false;
+
     public float $x_percent = 50;
 
     public float $y_percent = 50;
@@ -65,6 +67,7 @@ new class extends Component
         $this->label = $field->label;
         $this->field_key = $field->field_key;
         $this->type = $field->type;
+        $this->is_optional = $field->is_optional;
         $this->x_percent = $field->x_percent;
         $this->y_percent = $field->y_percent;
         $this->width_percent = $field->width_percent;
@@ -85,6 +88,7 @@ new class extends Component
             'label' => ['required', 'string', 'max:255'],
             'field_key' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:number,text,boolean,signature,timestamp,material,material_lot,material_quantity,input_quantity,good_quantity,defective_quantity'],
+            'is_optional' => ['required', 'boolean'],
             'x_percent' => ['required', 'numeric', 'between:0,100'],
             'y_percent' => ['required', 'numeric', 'between:0,100'],
             'width_percent' => ['required', 'numeric', 'between:1,100'],
@@ -110,6 +114,7 @@ new class extends Component
             'label' => $this->label,
             'field_key' => $this->field_key,
             'type' => $this->type,
+            'is_optional' => $this->is_optional,
             'x_percent' => $this->x_percent,
             'y_percent' => $this->y_percent,
             'width_percent' => $this->width_percent,
@@ -159,11 +164,13 @@ new class extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['label', 'field_key', 'type', 'width_percent', 'height_percent', 'target_value', 'min_value', 'max_value', 'linked_item_id', 'related_field_id', 'editingFieldId']);
+        $this->reset(['label', 'field_key', 'type', 'is_optional', 'width_percent', 'height_percent', 'target_value', 'min_value', 'max_value', 'linked_item_id', 'related_field_id', 'editingFieldId']);
         $this->type = 'number';
+        $this->is_optional = false;
         $this->width_percent = 10;
         $this->height_percent = 5;
     }
+
     public function getEffectiveTemplateMediaProperty()
     {
         if ($this->process->share_template_with_previous) {
@@ -312,6 +319,8 @@ new class extends Component
                 <flux:select.option value="good_quantity">良品数</flux:select.option>
                 <flux:select.option value="defective_quantity">不良数</flux:select.option>
             </flux:select>
+
+            <flux:checkbox wire:model="is_optional" label="任意入力にする" description="未入力でも作業を終了できるようにします。" />
 
             <div x-show="['material', 'material_lot', 'material_quantity'].includes($wire.type)" class="space-y-4">
                 <div x-show="['material', 'material_lot'].includes($wire.type)">

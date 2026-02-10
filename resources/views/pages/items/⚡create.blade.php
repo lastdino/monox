@@ -16,6 +16,8 @@ new class extends Component
 
     public ?float $unit_price = null;
 
+    public float $inventory_alert_quantity = 0;
+
     public string $description = '';
 
     public ?int $departmentId = null;
@@ -61,6 +63,7 @@ new class extends Component
             'type' => ['required', 'string', 'in:'.$typeValues],
             'unit' => ['required', 'string', 'max:50'],
             'unit_price' => ['nullable', 'numeric', 'min:0'],
+            'inventory_alert_quantity' => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
         ];
     }
@@ -73,7 +76,7 @@ new class extends Component
 
         Item::create($validated);
 
-        $this->reset('code', 'name', 'unit_price', 'description');
+        $this->reset('code', 'name', 'unit_price', 'inventory_alert_quantity', 'description');
         $this->type = $this->types[0]['value'] ?? 'part';
 
         Flux::modal('create-item')->close();
@@ -106,6 +109,8 @@ new class extends Component
             </div>
 
             <flux:input wire:model="unit_price" type="number" step="0.0001" label="単価" placeholder="0.00" />
+
+            <flux:input wire:model="inventory_alert_quantity" type="number" step="0.0001" label="在庫アラート数" placeholder="0.00" />
 
             <flux:textarea wire:model="description" label="説明" />
 

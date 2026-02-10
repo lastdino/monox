@@ -2,6 +2,7 @@
 
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Lastdino\Monox\Exports\WorksheetExport;
 use Lastdino\Monox\Models\Process;
 use Lastdino\Monox\Models\ProductionAnnotationField;
 use Lastdino\Monox\Models\ProductionAnnotationValue;
@@ -151,6 +152,17 @@ new class extends Component
         return $this->records[$this->currentProcessId] ?? null;
     }
 
+    public function exportExcel(WorksheetExport $export)
+    {
+        $result = $export->export($this->order);
+        $writer = $result['writer'];
+        $fileName = $result['fileName'];
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $fileName);
+    }
+
     public function stamp(string $type): void
     {
         if (! $this->currentWorker) {
@@ -187,17 +199,25 @@ new class extends Component
                 $record->update(['work_started_at' => $now]);
                 break;
             case 'work_end':
-                // アノテーションが全て入力されているかチェック
-                $fields = $this->process->annotationFields;
-                $filledValuesCount = $record->annotationValues()->count();
+                // 必須アノテーション項目のみを取得
+                $requiredFields = $this->process->annotationFields->where('is_optional', false);
+                $requiredFieldIds = $requiredFields->pluck('id');
 
-                if ($filledValuesCount < $fields->count()) {
-                    Flux::toast('未入力のアノテーション項目があります。全ての項目を記録してください。', variant: 'danger');
+                // 入力済みの必須項目の数をカウント
+                $filledRequiredValuesCount = $record->annotationValues()
+                    ->whereIn('field_id', $requiredFieldIds)
+                    ->whereNotNull('value')
+                    ->where('value', '!=', '')
+                    ->count();
+
+                if ($filledRequiredValuesCount < $requiredFields->count()) {
+                    Flux::toast('未入力の必須アノテーション項目があります。全ての必須項目を記録してください。', variant: 'danger');
 
                     return;
                 }
 
                 // 投入数、良品数、不良数がアノテーションとして存在しない場合、モーダルを表示して入力させる
+                $fields = $this->process->annotationFields;
                 $hasInputQty = $fields->where('type', 'input_quantity')->isNotEmpty();
                 $hasGoodQty = $fields->where('type', 'good_quantity')->isNotEmpty();
                 $hasDefectiveQty = $fields->where('type', 'defective_quantity')->isNotEmpty();
@@ -281,6 +301,12 @@ new class extends Component
 
     public function completeWork(): void
     {
+        if (! $this->currentWorker) {
+            Flux::toast('作業者を特定してください。', variant: 'danger');
+
+            return;
+        }
+
         $this->validate([
             'input_quantity' => ['required', 'numeric', 'min:0'],
             'good_quantity' => ['required', 'numeric', 'min:0'],
@@ -610,6 +636,7 @@ new class extends Component
             <flux:subheading>ロット: {{ $order->lot->lot_number ?? '-' }} | 予定数: {{ number_format($order->target_quantity, 2) }} {{ $order->item->unit }}</flux:subheading>
         </div>
         <div class="flex items-center gap-4">
+            <flux:button wire:click="exportExcel" icon="document-arrow-down" variant="outline">Excel出力</flux:button>
             <div x-data="{ scanning: false }" class="flex items-center gap-2">
                 @if($currentWorker)
                     <flux:badge color="green" icon="user" variant="outline">{{ $currentWorker->name }}</flux:badge>

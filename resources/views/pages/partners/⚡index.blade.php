@@ -57,7 +57,10 @@ new class extends Component
 
 <div>
     <div class="flex items-center justify-between mb-6">
-        <flux:heading size="xl">取引先マスター</flux:heading>
+        <div class="flex items-center gap-2">
+            <flux:heading size="xl">取引先マスター</flux:heading>
+            <x-monox::nav-menu :department="$departmentId" />
+        </div>
 
         <flux:modal.trigger name="create-partner">
             <flux:button variant="primary" icon="plus">新規登録</flux:button>

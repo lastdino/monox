@@ -96,7 +96,10 @@ new class extends Component
 
 <div>
     <div class="flex items-center justify-between mb-6">
-        <flux:heading size="xl">製造指図ダッシュボード</flux:heading>
+        <div class="flex items-center gap-2">
+            <flux:heading size="xl">製造指図ダッシュボード</flux:heading>
+            <x-monox::nav-menu :department="$departmentId" />
+        </div>
 
         <flux:modal.trigger name="create-order">
             <flux:button variant="primary" icon="plus">指図作成</flux:button>

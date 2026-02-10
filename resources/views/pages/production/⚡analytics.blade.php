@@ -43,7 +43,7 @@ new class extends Component
     public function nearDueOrders()
     {
         return SalesOrder::where('department_id', $this->departmentId)
-            ->where('status', '!=', 'shipped')
+            ->whereNotIn('status', ['shipped', 'cancelled'])
             ->whereBetween('due_date', [now()->toDateString(), now()->addDays(7)->toDateString()])
             ->with(['partner', 'item'])
             ->orderBy('due_date')
@@ -56,7 +56,7 @@ new class extends Component
     public function overdueOrders()
     {
         return SalesOrder::where('department_id', $this->departmentId)
-            ->where('status', '!=', 'shipped')
+            ->whereNotIn('status', ['shipped', 'cancelled'])
             ->where('due_date', '<', now()->toDateString())
             ->with(['partner', 'item'])
             ->orderBy('due_date')
@@ -68,15 +68,25 @@ new class extends Component
      */
     public function stockShortages(): array
     {
-        // 1. 未出荷の受注を品目ごとに集計
+        $shortages = [];
+        $processedItems = [];
+
+        // 1. 在庫アラート設定があり、かつ在庫がアラート数を下回っている品目をまず抽出
+        $alertItems = Item::where('department_id', $this->departmentId)
+            ->where('inventory_alert_quantity', '>', 0)
+            ->get()
+            ->filter(fn ($item) => $item->current_stock < $item->inventory_alert_quantity);
+
+        foreach ($alertItems as $item) {
+            $this->calculateShortage($item->id, 0, $shortages, $processedItems);
+        }
+
+        // 2. 未出荷の受注を品目ごとに集計し、不足を計算
         $demand = SalesOrder::where('department_id', $this->departmentId)
-            ->where('status', '!=', 'shipped')
+            ->whereNotIn('status', ['shipped', 'cancelled'])
             ->select('item_id', DB::raw('SUM(quantity) as total_demand'))
             ->groupBy('item_id')
             ->get();
-
-        $shortages = [];
-        $processedItems = [];
 
         foreach ($demand as $order) {
             $this->calculateShortage($order->item_id, $order->total_demand, $shortages, $processedItems);
@@ -105,6 +115,7 @@ new class extends Component
                 'code' => $item->code,
                 'required' => 0,
                 'stock' => $currentStock,
+                'alert_quantity' => $item->inventory_alert_quantity ?? 0,
                 'level' => $level,
                 'parent' => $parentName,
             ];
@@ -173,6 +184,38 @@ new class extends Component
 
         $field = ProductionAnnotationField::find($this->chartFieldId);
 
+        // 指標の計算
+        $stats = [
+            'avg' => null,
+            'cp' => null,
+            'cpk' => null,
+        ];
+
+        if (count($data) >= 2) {
+            $n = count($data);
+            $avg = array_sum($data) / $n;
+            $stats['avg'] = round($avg, 3);
+
+            // 標準偏差 (不偏標準偏差)
+            $variance = array_sum(array_map(fn ($x) => pow($x - $avg, 2), $data)) / ($n - 1);
+            $stdDev = sqrt($variance);
+
+            if ($stdDev > 0) {
+                $lsl = $field->min_value;
+                $usl = $field->max_value;
+
+                if ($lsl !== null && $usl !== null) {
+                    $stats['cp'] = round(($usl - $lsl) / (6 * $stdDev), 2);
+                }
+
+                if ($lsl !== null || $usl !== null) {
+                    $cpkUpper = $usl !== null ? ($usl - $avg) / (3 * $stdDev) : PHP_FLOAT_MAX;
+                    $cpkLower = $lsl !== null ? ($avg - $lsl) / (3 * $stdDev) : PHP_FLOAT_MAX;
+                    $stats['cpk'] = round(min($cpkUpper, $cpkLower), 2);
+                }
+            }
+        }
+
         return [
             'labels' => $labels,
             'datasets' => [
@@ -190,6 +233,7 @@ new class extends Component
                 'max' => $field->max_value,
                 'target' => $field->target_value,
             ],
+            'stats' => $stats,
         ];
     }
 
@@ -285,7 +329,10 @@ new class extends Component
 
 <div>
     <div class="mb-6 flex justify-between items-end">
-        <flux:heading size="xl">製造分析ダッシュボード</flux:heading>
+        <div class="flex items-center gap-2">
+            <flux:heading size="xl">製造分析ダッシュボード</flux:heading>
+            <x-monox::nav-menu :department="$departmentId" />
+        </div>
         <div class="flex gap-4">
             <div class="text-right">
                 <div class="text-xs text-zinc-500 font-medium">在庫評価額</div>
@@ -363,11 +410,16 @@ new class extends Component
                     <flux:table.column>品目</flux:table.column>
                     <flux:table.column>必要数</flux:table.column>
                     <flux:table.column>現在庫</flux:table.column>
-                    <flux:table.column>不足数</flux:table.column>
+                    <flux:table.column>アラート数</flux:table.column>
+                    <flux:table.column>不足 / 警告</flux:table.column>
                 </flux:table.columns>
                 <flux:table.rows>
                     @foreach($this->stockShortages() as $item)
-                        @if($item['required'] > $item['stock'])
+                        @php
+                            $isShortage = $item['required'] > $item['stock'];
+                            $isAlert = $item['stock'] < $item['alert_quantity'];
+                        @endphp
+                        @if($isShortage || $isAlert)
                             <flux:table.row>
                                 <flux:table.cell>
                                     <div class="flex items-center">
@@ -387,8 +439,14 @@ new class extends Component
                                 </flux:table.cell>
                                 <flux:table.cell>{{ number_format($item['required'], 2) }}</flux:table.cell>
                                 <flux:table.cell>{{ number_format($item['stock'], 2) }}</flux:table.cell>
+                                <flux:table.cell>{{ number_format($item['alert_quantity'], 2) }}</flux:table.cell>
                                 <flux:table.cell>
-                                    <flux:badge color="orange" size="sm">{{ number_format($item['required'] - $item['stock'], 2) }}</flux:badge>
+                                    @if($isShortage)
+                                        <flux:badge color="orange" size="sm" title="受注に対する不足数">不足: {{ number_format($item['required'] - $item['stock'], 2) }}</flux:badge>
+                                    @endif
+                                    @if($isAlert)
+                                        <flux:badge color="red" size="sm" title="在庫アラート数を下回っています">警告: 在庫少</flux:badge>
+                                    @endif
                                 </flux:table.cell>
                             </flux:table.row>
                         @endif
@@ -462,7 +520,20 @@ new class extends Component
         <!-- 4. 工程ごと入力値のトレンドチャート -->
         <flux:card class="lg:col-span-2">
             <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-                <flux:heading size="lg">工程入力値トレンド</flux:heading>
+                <div class="flex items-center gap-4">
+                    <flux:heading size="lg">工程入力値トレンド</flux:heading>
+                    <div id="chartStats" class="flex gap-3 text-sm">
+                        <span title="平均値" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400">
+                            Avg: <span id="statAvg">-</span>
+                        </span>
+                        <span title="工程能力指数" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400">
+                            Cp: <span id="statCp">-</span>
+                        </span>
+                        <span title="偏り考慮の工程能力指数" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400">
+                            Cpk: <span id="statCpk">-</span>
+                        </span>
+                    </div>
+                </div>
                 <div class="flex gap-2">
                     <flux:select wire:model.live="chartItemId" placeholder="品目" class="w-40">
                         <flux:select.option value="">品目を選択</flux:select.option>
@@ -506,6 +577,11 @@ new class extends Component
        $wire.$on('chart-data-updated', (event) => {
            const chartData = event.data;
            const ctx = document.getElementById('trendChart').getContext('2d');
+
+           // 統計情報の更新
+           document.getElementById('statAvg').textContent = chartData.stats?.avg ?? '-';
+           document.getElementById('statCp').textContent = chartData.stats?.cp ?? '-';
+           document.getElementById('statCpk').textContent = chartData.stats?.cpk ?? '-';
 
            if (trendChart) {
                trendChart.destroy();

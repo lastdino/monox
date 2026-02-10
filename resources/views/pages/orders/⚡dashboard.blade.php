@@ -294,7 +294,10 @@ new class extends Component
 
 <div>
     <div class="flex items-center justify-between mb-6">
-        <flux:heading size="xl">注文・出荷管理ダッシュボード</flux:heading>
+        <div class="flex items-center gap-2">
+            <flux:heading size="xl">受注・出荷管理ダッシュボード</flux:heading>
+            <x-monox::nav-menu :department="$departmentId" />
+        </div>
 
         <div class="flex items-center gap-2">
             <flux:button href="{{ route('monox.orders.trace', ['department' => $departmentId]) }}" variant="outline" icon="magnifying-glass">
@@ -320,6 +323,7 @@ new class extends Component
             <flux:radio value="pending" label="未処理" />
             <flux:radio value="processing" label="手配中" />
             <flux:radio value="shipped" label="出荷済み" />
+            <flux:radio value="cancelled" label="キャンセル" />
         </flux:radio.group>
     </div>
 
@@ -347,8 +351,15 @@ new class extends Component
                         <flux:table.cell>{{ $order->partner?->name ?? '-' }}</flux:table.cell>
                         <flux:table.cell>
                             @if($order->item)
-                                <div class="font-medium">{{ $order->item->name }}</div>
-                                <div class="text-xs text-zinc-500">{{ $order->item->code }}</div>
+                                <div class="flex items-center gap-2">
+                                    <div>
+                                        <div class="font-medium">{{ $order->item->name }}</div>
+                                        <div class="text-xs text-zinc-500">{{ $order->item->code }}</div>
+                                    </div>
+                                    @if($order->item->current_stock < $order->item->inventory_alert_quantity)
+                                        <flux:badge color="red" size="sm" title="在庫アラート数を下回っています">警告: 在庫少</flux:badge>
+                                    @endif
+                                </div>
                             @else
                                 -
                             @endif
@@ -359,16 +370,19 @@ new class extends Component
                             <div class="cursor-pointer" wire:click="openStatusModal({{ $order->id }}, 'order', '{{ $order->status }}', {{ $order->quantity }})">
                                 @switch($order->status)
                                     @case('pending')
-                                        <flux:badge color="zinc" size="sm" icon="pencil-square" icon-trailing>未処理</flux:badge>
+                                        <flux:badge color="zinc" size="sm" icon="pencil-square" >未処理</flux:badge>
                                         @break
                                     @case('processing')
-                                        <flux:badge color="blue" size="sm" icon="pencil-square" icon-trailing>手配中</flux:badge>
+                                        <flux:badge color="blue" size="sm" icon="pencil-square" >手配中</flux:badge>
                                         @break
                                     @case('shipped')
-                                        <flux:badge color="green" size="sm" icon="pencil-square" icon-trailing>出荷済み</flux:badge>
+                                        <flux:badge color="green" size="sm" icon="pencil-square" >出荷済み</flux:badge>
+                                        @break
+                                    @case('cancelled')
+                                        <flux:badge color="red" size="sm" icon="pencil-square" >キャンセル</flux:badge>
                                         @break
                                     @default
-                                        <flux:badge color="zinc" size="sm" icon="pencil-square" icon-trailing>{{ $order->status }}</flux:badge>
+                                        <flux:badge color="zinc" size="sm" icon="pencil-square" >{{ $order->status }}</flux:badge>
                                 @endswitch
                             </div>
                         </flux:table.cell>
@@ -453,6 +467,7 @@ new class extends Component
                 <flux:radio value="pending" label="未処理" />
                 <flux:radio value="processing" label="手配中" />
                 <flux:radio value="shipped" label="出荷済み" />
+                <flux:radio value="cancelled" label="キャンセル" />
             </flux:radio.group>
 
             @if($editingStatus === 'shipped')

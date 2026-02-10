@@ -129,7 +129,7 @@ new class extends Component
 
 <div class="p-6">
     <div class="flex items-center justify-between mb-6">
-        <flux:heading size="xl" level="1">受注トレサビリティ</flux:heading>
+        <flux:heading size="xl" level="1">トレサビリティ</flux:heading>
         <flux:button href="{{ route('monox.orders.dashboard', ['department' => $departmentId]) }}" variant="ghost" icon="arrow-left">
             ダッシュボードへ戻る
         </flux:button>
