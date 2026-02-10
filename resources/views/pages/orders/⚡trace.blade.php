@@ -171,11 +171,11 @@ new class extends Component
                     </div>
                     <div class="flex justify-between">
                         <span class="text-zinc-500">受注日</span>
-                        <span>{{ $order->order_date?->format('Y/m/d') }}</span>
+                        <span>{{ $order->order_date?->format(config('monox.datetime.formats.date', 'Y/m/d')) }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-zinc-500">納期</span>
-                        <span class="font-bold text-blue-600">{{ $order->due_date?->format('Y/m/d') }}</span>
+                        <span class="font-bold text-blue-600">{{ $order->due_date?->format(config('monox.datetime.formats.date', 'Y/m/d')) }}</span>
                     </div>
                     <div class="flex justify-between border-t pt-2">
                         <span class="text-zinc-500">数量</span>
@@ -214,7 +214,7 @@ new class extends Component
                             @foreach($order->shipments as $shipment)
                                 <flux:table.row>
                                     <flux:table.cell>{{ $shipment->shipment_number }}</flux:table.cell>
-                                    <flux:table.cell>{{ $shipment->shipping_date?->format('Y/m/d') }}</flux:table.cell>
+                                    <flux:table.cell>{{ $shipment->shipping_date?->format(config('monox.datetime.formats.date', 'Y/m/d')) }}</flux:table.cell>
                                     <flux:table.cell>
                                         @if($shipment->lot)
                                             <flux:badge variant="neutral">{{ $shipment->lot->lot_number }}</flux:badge>
@@ -271,10 +271,10 @@ new class extends Component
                                             <flux:table.cell>
                                                 <div class="text-xs">
                                                     @if($record->work_started_at)
-                                                        開始: {{ $record->work_started_at->format('m/d H:i') }}<br>
+                                                        開始: {{ $record->work_started_at->format(config('monox.datetime.formats.short_datetime', 'm/d H:i')) }}<br>
                                                     @endif
                                                     @if($record->work_finished_at)
-                                                        終了: {{ $record->work_finished_at->format('m/d H:i') }}
+                                                        終了: {{ $record->work_finished_at->format(config('monox.datetime.formats.short_datetime', 'm/d H:i')) }}
                                                         <div class="mt-1 font-bold text-zinc-700">
                                                             @php
                                                                 $durationSeconds = $record->work_started_at->diffInSeconds($record->work_finished_at, false);
@@ -286,7 +286,7 @@ new class extends Component
                                                     @endif
                                                 </div>
                                             </flux:table.cell>
-                                            <flux:table.cell>{{ $record->worker?->name ?? '-' }}</flux:table.cell>
+                                            <flux:table.cell>{{ $record->worker?->{config('monox.display.worker_column', 'name')} ?? '-' }}</flux:table.cell>
                                             <flux:table.cell>
                                                 <span class="text-green-600 font-bold">{{ number_format($record->good_quantity) }}</span>
                                                 /
@@ -379,7 +379,7 @@ new class extends Component
                     </div>
                     <div class="flex justify-between">
                         <span class="text-zinc-500">有効期限</span>
-                        <span>{{ $lot->expired_at?->format('Y/m/d') ?? '-' }}</span>
+                        <span>{{ $lot->expired_at?->format(config('monox.datetime.formats.date', 'Y/m/d')) ?? '-' }}</span>
                     </div>
                     <div class="flex justify-between border-t pt-2">
                         <span class="text-zinc-500">現在庫</span>
@@ -408,7 +408,7 @@ new class extends Component
                                     <flux:table.cell class="font-mono">#{{ $o->order_number }}</flux:table.cell>
                                     <flux:table.cell>{{ $o->partner?->name }}</flux:table.cell>
                                     <flux:table.cell>{{ $o->item?->name }}</flux:table.cell>
-                                    <flux:table.cell>{{ $o->due_date?->format('Y/m/d') }}</flux:table.cell>
+                                    <flux:table.cell>{{ $o->due_date?->format(config('monox.datetime.formats.date', 'Y/m/d')) }}</flux:table.cell>
                                     <flux:table.cell align="end">{{ number_format($o->quantity) }}</flux:table.cell>
                                     <flux:table.cell>
                                         <flux:button href="{{ route('monox.orders.trace', ['department' => $departmentId, 'order_number' => $o->order_number]) }}" size="xs" variant="ghost" icon="magnifying-glass" square tooltip="受注詳細をトレース" />

@@ -387,11 +387,11 @@ new class extends Component
 
         // 特殊な型の初期値設定
         if ($field->type === 'timestamp' && empty($this->fieldValue)) {
-            $this->fieldValue = now()->format('Y-m-d H:i');
+            $this->fieldValue = now()->format(config('monox.datetime.formats.short_datetime', 'Y-m-d H:i'));
         }
 
         if ($field->type === 'signature' && empty($this->fieldValue) && $this->currentWorker) {
-            $this->fieldValue = $this->currentWorker->name;
+            $this->fieldValue = $this->currentWorker->{config('monox.display.worker_column', 'name')};
         }
 
         if ($field->type === 'material' && $this->consumedQuantity == 0 && empty($this->fieldValue)) {
@@ -621,7 +621,7 @@ new class extends Component
         if ($user) {
             $this->currentWorker = $user;
             $this->worker_code = '';
-            Flux::toast($user->name.' がログインしました。');
+            Flux::toast($user->{config('monox.display.worker_column', 'name')}.' がログインしました。');
         } else {
             Flux::toast('作業者が見つかりません。', variant: 'danger');
         }
@@ -639,7 +639,7 @@ new class extends Component
             <flux:button wire:click="exportExcel" icon="document-arrow-down" variant="outline">Excel出力</flux:button>
             <div x-data="{ scanning: false }" class="flex items-center gap-2">
                 @if($currentWorker)
-                    <flux:badge color="green" icon="user" variant="outline">{{ $currentWorker->name }}</flux:badge>
+                    <flux:badge color="green" icon="user" variant="outline">{{ $currentWorker->{config('monox.display.worker_column', 'name')} }}</flux:badge>
                 @endif
                 <flux:input wire:model.live="worker_code" wire:keydown.enter="scanWorker" placeholder="作業者コードをスキャン..." class="w-48" />
                 <livewire:monox_component::qr-scanner wire:model.live="worker_code"/>

@@ -175,7 +175,7 @@ new class extends Component
             <flux:table.rows>
                 @foreach ($this->movements() as $movement)
                     <flux:table.row :key="$movement->id">
-                        <flux:table.cell class="whitespace-nowrap text-xs">{{ $movement->moved_at->format('Y-m-d H:i') }}</flux:table.cell>
+                        <flux:table.cell class="whitespace-nowrap text-xs">{{ $movement->moved_at->format(config('monox.datetime.formats.datetime', 'Y-m-d H:i')) }}</flux:table.cell>
                         <flux:table.cell>{{ $movement->lot?->lot_number ?? '-' }}</flux:table.cell>
                         <flux:table.cell>
                             @switch($movement->type)

@@ -28,7 +28,11 @@ new class extends Component
 
     public ?int $chartProcessId = null;
 
-    public ?int $chartFieldId = null;
+    public array $chartFieldIds = [];
+
+    public string $calcMode = 'avg';
+
+    public bool $showSpcLimits = true;
 
     public int $chartLimit = 50;
 
@@ -162,34 +166,58 @@ new class extends Component
      */
     public function trendChartData(): array
     {
-        if (! $this->chartFieldId) {
+        if (empty($this->chartFieldIds)) {
             return [];
         }
 
-        $values = ProductionAnnotationValue::where('field_id', $this->chartFieldId)
+        $query = ProductionAnnotationValue::whereIn('field_id', $this->chartFieldIds)
             ->with(['productionRecord.productionOrder.lot'])
             ->whereHas('productionRecord', function ($q) {
                 $q->whereNotNull('work_finished_at');
                 if ($this->chartProcessId) {
                     $q->where('process_id', $this->chartProcessId);
                 }
+            });
+
+        $values = $query->get()
+            ->groupBy('production_record_id')
+            ->map(function ($group) {
+                $first = $group->first();
+                $record = $first->productionRecord;
+
+                // 複数項目がある場合の集計
+                $sum = $group->sum(fn($v) => (float)$v->value);
+                $val = $this->calcMode === 'sum' ? $sum : $sum / $group->count();
+
+                return [
+                    'record_id' => $record->id,
+                    'finished_at' => $record->work_finished_at,
+                    'lot_number' => $record->productionOrder->lot?->lot_number,
+                    'value' => $val,
+                ];
             })
-            ->get()
-            ->sortByDesc('productionRecord.work_finished_at')
+            ->sortByDesc('finished_at')
             ->take($this->chartLimit)
-            ->sortBy('productionRecord.work_finished_at');
+            ->sortBy('finished_at')
+            ->values();
 
-        $labels = $values->map(fn ($v) => $v->productionRecord->productionOrder->lot?->lot_number ?? $v->productionRecord->work_finished_at->format('m/d H:i'))->values()->toArray();
-        $data = $values->map(fn ($v) => (float) $v->value)->values()->toArray();
+        $labels = $values->map(fn ($v) => $v['lot_number'] ?? $v['finished_at']->format(config('monox.datetime.formats.short_datetime', 'm/d H:i')))->toArray();
+        $data = $values->map(fn ($v) => (float) $v['value'])->toArray();
 
-        $field = ProductionAnnotationField::find($this->chartFieldId);
+        // 基準値の取得 (単一選択時のみ有効、または最初の項目を使用)
+        $firstFieldId = reset($this->chartFieldIds);
+        $field = ProductionAnnotationField::find($firstFieldId);
 
         // 指標の計算
         $stats = [
             'avg' => null,
             'cp' => null,
             'cpk' => null,
+            'stdDev' => null,
         ];
+
+        $ucl = null;
+        $lcl = null;
 
         if (count($data) >= 2) {
             $n = count($data);
@@ -199,6 +227,12 @@ new class extends Component
             // 標準偏差 (不偏標準偏差)
             $variance = array_sum(array_map(fn ($x) => pow($x - $avg, 2), $data)) / ($n - 1);
             $stdDev = sqrt($variance);
+            $stats['stdDev'] = round($stdDev, 3);
+
+            if ($this->showSpcLimits) {
+                $ucl = round($avg + 3 * $stdDev, 3);
+                $lcl = round($avg - 3 * $stdDev, 3);
+            }
 
             if ($stdDev > 0) {
                 $lsl = $field->min_value;
@@ -216,11 +250,15 @@ new class extends Component
             }
         }
 
+        $label = count($this->chartFieldIds) > 1
+            ? ($this->calcMode === 'avg' ? '複数項目の平均' : '複数項目の合計')
+            : ($field->label ?? '値');
+
         return [
             'labels' => $labels,
             'datasets' => [
                 [
-                    'label' => $field->label ?? '値',
+                    'label' => $label,
                     'data' => $data,
                     'borderColor' => '#2563eb',
                     'backgroundColor' => 'rgba(37, 99, 235, 0.1)',
@@ -232,6 +270,8 @@ new class extends Component
                 'min' => $field->min_value,
                 'max' => $field->max_value,
                 'target' => $field->target_value,
+                'ucl' => $ucl,
+                'lcl' => $lcl,
             ],
             'stats' => $stats,
         ];
@@ -274,22 +314,32 @@ new class extends Component
     public function updatedChartItemId()
     {
         $this->chartProcessId = null;
-        $this->chartFieldId = null;
+        $this->chartFieldIds = [];
     }
 
     public function updatedChartProcessId()
     {
-        $this->chartFieldId = null;
+        $this->chartFieldIds = [];
     }
 
-    public function updatedChartFieldId()
+    public function updatedChartFieldIds()
+    {
+        $this->dispatch('chart-data-updated', data: $this->trendChartData());
+    }
+
+    public function updatedCalcMode()
+    {
+        $this->dispatch('chart-data-updated', data: $this->trendChartData());
+    }
+
+    public function updatedShowSpcLimits()
     {
         $this->dispatch('chart-data-updated', data: $this->trendChartData());
     }
 
     public function updatedChartLimit()
     {
-        if ($this->chartFieldId) {
+        if (!empty($this->chartFieldIds)) {
             $this->dispatch('chart-data-updated', data: $this->trendChartData());
         }
     }
@@ -367,7 +417,7 @@ new class extends Component
                             <flux:table.rows>
                                 @foreach($this->overdueOrders() as $order)
                                     <flux:table.row class="bg-red-50">
-                                        <flux:table.cell class="text-red-600 font-bold">{{ $order->due_date->format('Y-m-d') }}</flux:table.cell>
+                                        <flux:table.cell class="text-red-600 font-bold">{{ $order->due_date->format(config('monox.datetime.formats.date', 'Y-m-d')) }}</flux:table.cell>
                                         <flux:table.cell>{{ $order->order_number }}</flux:table.cell>
                                         <flux:table.cell>{{ $order->item->name }}</flux:table.cell>
                                         <flux:table.cell>{{ $order->quantity }}</flux:table.cell>
@@ -390,7 +440,7 @@ new class extends Component
                         <flux:table.rows>
                             @foreach($this->nearDueOrders() as $order)
                                 <flux:table.row>
-                                    <flux:table.cell>{{ $order->due_date->format('Y-m-d') }}</flux:table.cell>
+                                    <flux:table.cell>{{ $order->due_date->format(config('monox.datetime.formats.date', 'Y-m-d')) }}</flux:table.cell>
                                     <flux:table.cell>{{ $order->order_number }}</flux:table.cell>
                                     <flux:table.cell>{{ $order->item->name }}</flux:table.cell>
                                     <flux:table.cell>{{ $order->quantity }}</flux:table.cell>
@@ -498,7 +548,7 @@ new class extends Component
                             $duration = round($actualSeconds / 60, 1);
                         @endphp
                         <flux:table.row>
-                            <flux:table.cell>{{ $record->work_finished_at->format('m/d H:i') }}</flux:table.cell>
+                            <flux:table.cell>{{ $record->work_finished_at->format(config('monox.datetime.formats.short_datetime', 'm/d H:i')) }}</flux:table.cell>
                             <flux:table.cell>
                                 <div class="font-medium">{{ $record->productionOrder->item->name }}</div>
                                 <div class="text-xs text-zinc-500">{{ $record->process->name }}</div>
@@ -519,43 +569,58 @@ new class extends Component
 
         <!-- 4. 工程ごと入力値のトレンドチャート -->
         <flux:card class="lg:col-span-2">
-            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-                <div class="flex items-center gap-4">
-                    <flux:heading size="lg">工程入力値トレンド</flux:heading>
-                    <div id="chartStats" class="flex gap-3 text-sm">
-                        <span title="平均値" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400">
-                            Avg: <span id="statAvg">-</span>
-                        </span>
-                        <span title="工程能力指数" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400">
-                            Cp: <span id="statCp">-</span>
-                        </span>
-                        <span title="偏り考慮の工程能力指数" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400">
-                            Cpk: <span id="statCpk">-</span>
-                        </span>
+            <div class="flex flex-col mb-4 gap-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <flux:heading size="lg">工程入力値トレンド</flux:heading>
+                        <div id="chartStats" class="flex flex-wrap gap-2 text-sm">
+                            <span title="平均値" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                Avg: <span id="statAvg">-</span>
+                            </span>
+                            <span title="工程能力指数" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                Cp: <span id="statCp">-</span>
+                            </span>
+                            <span title="偏り考慮の工程能力指数" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                Cpk: <span id="statCpk">-</span>
+                            </span>
+                            <span title="標準偏差" class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                σ: <span id="statStdDev">-</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <flux:radio.group wire:model.live="calcMode" variant="segmented" size="sm" class="flex items-center">
+                            <flux:radio value="avg" label="平均" />
+                            <flux:radio value="sum" label="合計" />
+                        </flux:radio.group>
+                        <div class="flex items-center gap-2 ml-2">
+                            <flux:switch wire:model.live="showSpcLimits" size="sm" label="SPC" />
+                        </div>
+                        <flux:select wire:model.live="chartLimit" size="sm" class="w-24">
+                            <flux:select.option value="50">50件</flux:select.option>
+                            <flux:select.option value="100">100件</flux:select.option>
+                        </flux:select>
                     </div>
                 </div>
-                <div class="flex gap-2">
-                    <flux:select wire:model.live="chartItemId" placeholder="品目" class="w-40">
+
+                <div class="flex flex-wrap gap-2">
+                    <flux:select wire:model.live="chartItemId" placeholder="品目" class="w-full md:w-40">
                         <flux:select.option value="">品目を選択</flux:select.option>
                         @foreach($this->items as $item)
                             <flux:select.option value="{{ $item->id }}">{{ $item->name }}</flux:select.option>
                         @endforeach
                     </flux:select>
-                    <flux:select wire:model.live="chartProcessId" placeholder="工程" class="w-40">
+                    <flux:select wire:model.live="chartProcessId" placeholder="工程" class="w-full md:w-40">
                         <flux:select.option value="">工程を選択</flux:select.option>
                         @foreach($this->chartProcesses as $process)
                             <flux:select.option value="{{ $process->id }}">{{ $process->name }}</flux:select.option>
                         @endforeach
                     </flux:select>
-                    <flux:select wire:model.live="chartFieldId" placeholder="入力項目" class="w-40">
-                        <flux:select.option value="">項目を選択</flux:select.option>
+                    <flux:select wire:model.live="chartFieldIds" multiple placeholder="入力項目" class="flex-1 min-w-[200px]">
                         @foreach($this->chartFields as $field)
                             <flux:select.option value="{{ $field->id }}">{{ $field->label }}</flux:select.option>
                         @endforeach
-                    </flux:select>
-                    <flux:select wire:model.live="chartLimit" class="w-24">
-                        <flux:select.option value="50">50件</flux:select.option>
-                        <flux:select.option value="100">100件</flux:select.option>
                     </flux:select>
                 </div>
             </div>
@@ -582,6 +647,7 @@ new class extends Component
            document.getElementById('statAvg').textContent = chartData.stats?.avg ?? '-';
            document.getElementById('statCp').textContent = chartData.stats?.cp ?? '-';
            document.getElementById('statCpk').textContent = chartData.stats?.cpk ?? '-';
+           document.getElementById('statStdDev').textContent = chartData.stats?.stdDev ?? '-';
 
            if (trendChart) {
                trendChart.destroy();
@@ -626,6 +692,38 @@ new class extends Component
                                            display: true,
                                            content: '下限: ' + chartData.thresholds.min,
                                            position: 'end'
+                                       }
+                                   }
+                               } : {}),
+                               ...(chartData.thresholds.ucl ? {
+                                   uclLine: {
+                                       type: 'line',
+                                       yMin: chartData.thresholds.ucl,
+                                       yMax: chartData.thresholds.ucl,
+                                       borderColor: 'rgb(168, 85, 247)',
+                                       borderWidth: 1.5,
+                                       borderDash: [2, 2],
+                                       label: {
+                                           display: true,
+                                           content: 'UCL: ' + chartData.thresholds.ucl,
+                                           position: 'start',
+                                           backgroundColor: 'rgba(168, 85, 247, 0.8)'
+                                       }
+                                   }
+                               } : {}),
+                               ...(chartData.thresholds.lcl ? {
+                                   lclLine: {
+                                       type: 'line',
+                                       yMin: chartData.thresholds.lcl,
+                                       yMax: chartData.thresholds.lcl,
+                                       borderColor: 'rgb(168, 85, 247)',
+                                       borderWidth: 1.5,
+                                       borderDash: [2, 2],
+                                       label: {
+                                           display: true,
+                                           content: 'LCL: ' + chartData.thresholds.lcl,
+                                           position: 'start',
+                                           backgroundColor: 'rgba(168, 85, 247, 0.8)'
                                        }
                                    }
                                } : {}),

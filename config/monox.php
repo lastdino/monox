@@ -32,7 +32,23 @@ return [
             'date' => 'Y-m-d',
             'time' => 'H:i:s',
             'year_month' => 'Y-m',
+            'short_date' => 'm/d',
+            'datetime' => 'Y/m/d H:i',
+            'short_datetime' => 'm/d H:i',
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Display Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure how data is displayed in the UI.
+    |
+    */
+    'display' => [
+        // Column name of the worker/user to display in the UI (e.g., 'name', 'email')
+        'worker_column' => 'name',
     ],
 
     /*

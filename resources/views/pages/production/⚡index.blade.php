@@ -168,7 +168,7 @@ new class extends Component
                     </flux:table.cell>
                     <flux:table.cell>{{ $order->lot->lot_number ?? '-' }}</flux:table.cell>
                     <flux:table.cell>{{ number_format($order->target_quantity, 2) }} {{ $order->item->unit }}</flux:table.cell>
-                    <flux:table.cell>{{ $order->created_at->format('Y-m-d') }}</flux:table.cell>
+                    <flux:table.cell>{{ $order->created_at->format(config('monox.datetime.formats.date', 'Y-m-d')) }}</flux:table.cell>
                     <flux:table.cell align="end">
                         <flux:button href="{{ route('monox.production.travel-sheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="printer" square tooltip="トラベルシート" />
                         <flux:button href="{{ route('monox.production.worksheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="document-text" square tooltip="ワークシート" />

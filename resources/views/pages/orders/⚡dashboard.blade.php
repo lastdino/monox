@@ -364,7 +364,7 @@ new class extends Component
                                 -
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell>{{ $order->due_date ? $order->due_date->format('Y-m-d') : '-' }}</flux:table.cell>
+                        <flux:table.cell>{{ $order->due_date ? $order->due_date->format(config('monox.datetime.formats.date', 'Y-m-d')) : '-' }}</flux:table.cell>
                         <flux:table.cell>{{ number_format($order->quantity, 2) }}</flux:table.cell>
                         <flux:table.cell>
                             <div class="cursor-pointer" wire:click="openStatusModal({{ $order->id }}, 'order', '{{ $order->status }}', {{ $order->quantity }})">

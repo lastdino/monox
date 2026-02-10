@@ -36,7 +36,7 @@ new #[Layout('monox::layouts.print')] class extends Component
         <div class="flex justify-between items-start border-b-2 border-black pb-2 mb-6">
             <div>
                 <h1 class="text-2xl font-bold">トラベルシート (製造指図書)</h1>
-                <p class="text-xs">作成日: {{ $order->created_at->format('Y/m/d H:i') }}</p>
+                <p class="text-xs">作成日: {{ $order->created_at->format(config('monox.datetime.formats.datetime', 'Y/m/d H:i')) }}</p>
             </div>
             <div class="text-right">
                 <div class="text-base font-bold">指図ID: {{ $order->id }}</div>
