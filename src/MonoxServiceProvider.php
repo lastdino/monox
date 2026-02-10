@@ -44,6 +44,8 @@ class MonoxServiceProvider extends ServiceProvider
 
         $this->registerLivewireComponents();
 
+        $this->registerRouteModelBindings();
+
         $this->app->booted(function () {
             if (Route::hasMacro('livewire')) {
                 $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
@@ -71,5 +73,19 @@ class MonoxServiceProvider extends ServiceProvider
                 Livewire::addNamespace('monox_component', $publishedPath);
             }
         }
+    }
+
+    protected function registerRouteModelBindings(): void
+    {
+        Route::bind('department', function ($value) {
+            $model = config('monox.models.department');
+
+            // もし設定されているモデルクラスが存在しない場合はデフォルトに戻す
+            if (! $model || ! class_exists($model)) {
+                $model = \Lastdino\Monox\Models\Department::class;
+            }
+
+            return (new $model)->where((new $model)->getRouteKeyName(), $value)->firstOrFail();
+        });
     }
 }

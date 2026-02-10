@@ -36,9 +36,13 @@ new class extends Component
 
     public int $chartLimit = 50;
 
-    public function mount(Department $department): void
+    public function mount($department): void
     {
-        $this->departmentId = $department->id;
+        if ($department instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department->getKey();
+        } else {
+            $this->departmentId = (int) $department;
+        }
     }
 
     /**

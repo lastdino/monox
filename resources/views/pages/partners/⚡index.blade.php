@@ -1,8 +1,6 @@
 <?php
 
 use Flux\Flux;
-use Lastdino\Monox\Models\Partner;
-use Lastdino\Monox\Models\Department;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -13,22 +11,26 @@ new class extends Component
 
     public string $search = '';
 
-    public ?int $departmentId = null;
+    public $departmentId = null;
 
-    public function mount(Department $department): void
+    public function mount($department): void
     {
-        $this->departmentId = $department->id;
+        if ($department instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department->getKey();
+        } else {
+            $this->departmentId = (int) $department;
+        }
     }
 
-    public ?Partner $activePartner = null;
+    public ?\Lastdino\Monox\Models\Partner $activePartner = null;
 
-    public function editPartner(Partner $partner, string $modalName): void
+    public function editPartner(\Lastdino\Monox\Models\Partner $partner, string $modalName): void
     {
         $this->activePartner = $partner;
         Flux::modal($modalName)->show();
     }
 
-    public function delete(Partner $partner): void
+    public function delete(\Lastdino\Monox\Models\Partner $partner): void
     {
         $partner->delete();
         Flux::toast('取引先を削除しました。');
@@ -43,7 +45,7 @@ new class extends Component
 
     public function partners()
     {
-        return Partner::query()
+        return \Lastdino\Monox\Models\Partner::query()
             ->where('department_id', $this->departmentId)
             ->when($this->search, fn ($query) => $query->where(function ($q) {
                 $q->where('name', 'like', '%'.$this->search.'%')
@@ -59,7 +61,7 @@ new class extends Component
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-2">
             <flux:heading size="xl">取引先マスター</flux:heading>
-            <x-monox::nav-menu :department="$departmentId" />
+            <x-monox::nav-menu :department="$this->departmentId" />
         </div>
 
         <flux:modal.trigger name="create-partner">

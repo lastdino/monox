@@ -24,9 +24,9 @@ new class extends Component
 
     public function mount(): void
     {
-        $department = request()->route('department');
-        if ($department instanceof \Lastdino\Monox\Models\Department) {
-            $this->departmentId = $department->id;
+        $department = request()->route('department_id');
+        if ($department instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department->getKey();
         } elseif ($department) {
             $this->departmentId = (int) $department;
         }
@@ -38,15 +38,15 @@ new class extends Component
     {
         $id = $this->departmentId;
         if (! $id) {
-            $department = request()->route('department');
-            if ($department instanceof \Lastdino\Monox\Models\Department) {
-                $id = $department->id;
+            $department = request()->route('department_id');
+            if ($department instanceof \Illuminate\Database\Eloquent\Model) {
+                $id = $department->getKey();
             } elseif ($department) {
                 $id = (int) $department;
             }
         }
 
-        return \Lastdino\Monox\Models\Department::find($id)?->getItemTypes() ?? [
+        return config('monox.models.department')::find($id)?->getItemTypes() ?? [
             ['value' => 'part', 'label' => '部品'],
             ['value' => 'product', 'label' => '製品'],
         ];

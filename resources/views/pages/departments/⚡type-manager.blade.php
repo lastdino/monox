@@ -1,18 +1,22 @@
 <?php
 
-use Lastdino\Monox\Models\Department;
 use Livewire\Component;
 
 new class extends Component
 {
-    public Department $department;
+    public $department;
 
     public array $types = [];
 
-    public function mount(Department $department): void
+    public function mount($department): void
     {
-        $this->department = $department;
-        $this->types = $department->getItemTypes();
+        $departmentModel = config('monox.models.department');
+        if (! $department instanceof $departmentModel) {
+            abort(404);
+        }
+
+        $this->department = $department_id;
+        $this->types = $department_id->getItemTypes();
     }
 
     public function addType(): void

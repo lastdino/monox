@@ -1,10 +1,6 @@
 <?php
 
 use Flux\Flux;
-use Lastdino\Monox\Models\Department;
-use Lastdino\Monox\Models\Item;
-use Lastdino\Monox\Models\Lot;
-use Lastdino\Monox\Models\ProductionOrder;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -27,14 +23,18 @@ new class extends Component
 
     public string $note = '';
 
-    public function mount(Department $department): void
+    public function mount($department_id): void
     {
-        $this->departmentId = $department->id;
+        if ($department_id instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department_id->getKey();
+        } else {
+            $this->departmentId = (int) $department_id;
+        }
     }
 
     public function orders()
     {
-        return ProductionOrder::query()
+        return \Lastdino\Monox\Models\ProductionOrder::query()
             ->where('department_id', $this->departmentId)
             ->with(['item.processes', 'lot', 'productionRecords.process'])
             ->when($this->search, function ($q) {
@@ -59,7 +59,7 @@ new class extends Component
 
         $lotId = null;
         if ($this->lot_number) {
-            $lot = Lot::firstOrCreate([
+            $lot = \Lastdino\Monox\Models\Lot::firstOrCreate([
                 'lot_number' => $this->lot_number,
                 'item_id' => $this->item_id,
                 'department_id' => $this->departmentId,
@@ -67,7 +67,7 @@ new class extends Component
             $lotId = $lot->id;
         }
 
-        $order = ProductionOrder::create([
+        $order = \Lastdino\Monox\Models\ProductionOrder::create([
             'department_id' => $this->departmentId,
             'item_id' => $this->item_id,
             'lot_id' => $lotId,
@@ -89,7 +89,7 @@ new class extends Component
 
     public function items()
     {
-        return Item::where('department_id', $this->departmentId)->get();
+        return \Lastdino\Monox\Models\Item::where('department_id', $this->departmentId)->get();
     }
 };
 ?>
@@ -98,7 +98,7 @@ new class extends Component
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-2">
             <flux:heading size="xl">製造指図ダッシュボード</flux:heading>
-            <x-monox::nav-menu :department="$departmentId" />
+            <x-monox::nav-menu :department="$this->departmentId" />
         </div>
 
         <flux:modal.trigger name="create-order">

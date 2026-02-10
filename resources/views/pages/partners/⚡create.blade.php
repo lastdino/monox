@@ -22,9 +22,12 @@ new class extends Component
 
     public function mount(): void
     {
-        $this->departmentId = request()->route('department') instanceof \Lastdino\Monox\Models\Department
-            ? request()->route('department')->id
-            : request()->route('department');
+        $department = request()->route('department_id');
+        if ($department instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department->getKey();
+        } elseif ($department) {
+            $this->departmentId = (int) $department;
+        }
     }
 
     protected function rules(): array

@@ -13,10 +13,21 @@ new #[Layout('monox::layouts.print')] class extends Component
     public int $departmentId;
     public ProductionOrder $order;
 
-    public function mount(Department $department, ProductionOrder $order): void
+    public function mount($department_id, $order): void
     {
-        $this->departmentId = $department->id;
-        $this->order = $order->load(['item.processes', 'lot']);
+        if ($department_id instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department_id->getKey();
+        } else {
+            $this->departmentId = (int) $department_id;
+        }
+
+        if ($order instanceof ProductionOrder) {
+            $this->order = $order;
+        } else {
+            $this->order = ProductionOrder::findOrFail($order);
+        }
+
+        $this->order->load(['item.processes', 'lot']);
     }
 
     public function getQrCode(string $data, int $size = 80): string
@@ -29,7 +40,7 @@ new #[Layout('monox::layouts.print')] class extends Component
 <div class="travel-sheet">
     <div class="no-print mb-4 flex justify-end">
         <flux:button icon="printer" variant="primary" onclick="window.print()">印刷する</flux:button>
-        <flux:button variant="ghost" href="{{ route('monox.production.index', ['department' => $departmentId]) }}" class="ml-2">戻る</flux:button>
+        <flux:button variant="ghost" href="{{ route('monox.production.index', ['department_id' => $departmentId]) }}" class="ml-2">戻る</flux:button>
     </div>
 
     <div class="sheet-container bg-white text-black p-4 sm:p-8 border border-gray-300 mx-auto shadow-sm print:shadow-none print:border-none print:p-0">

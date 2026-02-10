@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
-use Lastdino\Monox\Models\Department;
-use Lastdino\Monox\Models\Item;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -21,26 +19,26 @@ new class extends Component
 
     public function mount($department = null): void
     {
-        if ($department instanceof Department) {
-            $this->departmentId = $department->id;
-        } elseif ($department) {
+        if ($department instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department->getKey();
+        } else {
             $this->departmentId = (int) $department;
         }
     }
 
     public function getTypesProperty(): array
     {
-        return Department::find($this->departmentId)?->getItemTypes() ?? [];
+        return config('monox.models.department')::find($this->departmentId)?->getItemTypes() ?? [];
     }
 
-    public ?Item $activeItem = null;
+    public ?\Lastdino\Monox\Models\Item $activeItem = null;
 
-    public function delete(Item $item): void
+    public function delete(\Lastdino\Monox\Models\Item $item): void
     {
         $item->delete();
     }
 
-    public function editItem(Item $item, string $modalName): void
+    public function editItem(\Lastdino\Monox\Models\Item $item, string $modalName): void
     {
         $this->activeItem = $item;
         Flux::modal($modalName)->show();
@@ -56,14 +54,14 @@ new class extends Component
         // Handled by Livewire
     }
 
-    public function getDepartmentProperty(): ?Department
+    public function getDepartmentProperty()
     {
-        return Department::find($this->departmentId);
+        return config('monox.models.department')::find($this->departmentId);
     }
 
     public function items()
     {
-        return Item::query()
+        return \Lastdino\Monox\Models\Item::query()
             ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
             ->when($this->typeFilter, fn ($q) => $q->where('type', $this->typeFilter))
             ->when($this->search, fn ($query) => $query->where(function ($q) {
@@ -94,7 +92,7 @@ new class extends Component
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-2">
             <flux:heading size="xl">品目マスター</flux:heading>
-            <x-monox::nav-menu :department="$departmentId" />
+            <x-monox::nav-menu :department="$this->departmentId" />
         </div>
 
         <div class="flex gap-2">

@@ -21,9 +21,14 @@ new class extends Component
 
     public \Illuminate\Support\Collection $usedInLots;
 
-    public function mount(Department $department): void
+    public function mount($department_id): void
     {
-        $this->departmentId = $department->id;
+        if ($department_id instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department_id->getKey();
+        } else {
+            $this->departmentId = (int) $department_id;
+        }
+
         $this->orders = collect();
         $this->usedInLots = collect();
 

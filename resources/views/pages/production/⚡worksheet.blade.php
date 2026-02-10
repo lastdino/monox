@@ -58,9 +58,21 @@ new class extends Component
 
     public $defective_quantity = 0;
 
-    public function mount(ProductionOrder $order): void
+    public $departmentId;
+
+    public function mount($order): void
     {
-        $this->order = $order->load(['item.processes', 'productionRecords.annotationValues', 'lot']);
+        if ($order instanceof ProductionOrder) {
+            $this->order = $order;
+        } else {
+            $this->order = ProductionOrder::findOrFail($order);
+        }
+
+        $this->departmentId = request()->route('department_id') instanceof \Illuminate\Database\Eloquent\Model
+            ? request()->route('department_id')->getKey()
+            : (int) request()->route('department_id');
+
+        $this->order->load(['item.processes', 'productionRecords.annotationValues', 'lot']);
         $this->records = $this->order->productionRecords->keyBy('process_id');
 
         if ($this->currentProcessId && $this->order->item->processes->contains('id', $this->currentProcessId)) {
