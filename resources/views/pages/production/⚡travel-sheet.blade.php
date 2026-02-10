@@ -44,7 +44,7 @@ new #[Layout('monox::layouts.print')] class extends Component
                     {!! $this->getQrCode(route('monox.production.worksheet', [
                         'department' => $departmentId,
                         'order' => $order->id,
-                    ]), 60) !!}
+                    ]), config('monox.production.travel_sheet.qr_sizes.order_url', 60)) !!}
                 </div>
             </div>
         </div>
@@ -68,7 +68,7 @@ new #[Layout('monox::layouts.print')] class extends Component
                 </div>
                 @if($order->lot?->lot_number)
                     <div class="ml-2 shrink-0">
-                        {!! $this->getQrCode($order->lot->lot_number, 50) !!}
+                        {!! $this->getQrCode($order->lot->lot_number, config('monox.production.travel_sheet.qr_sizes.lot_number', 50)) !!}
                     </div>
                 @endif
             </div>
@@ -93,6 +93,9 @@ new #[Layout('monox::layouts.print')] class extends Component
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $processParam = config('monox.production.worksheet_process_parameter', 'process');
+                    @endphp
                     @forelse($order->item->processes as $process)
                         <tr>
                             <td class="border border-black p-2 text-center text-base">{{ $process->sort_order }}</td>
@@ -101,8 +104,8 @@ new #[Layout('monox::layouts.print')] class extends Component
                                     {!! $this->getQrCode(route('monox.production.worksheet', [
                                         'department' => $departmentId,
                                         'order' => $order->id,
-                                        'process' => $process->id,
-                                    ]), 45) !!}
+                                        $processParam => $process->id,
+                                    ]), config('monox.production.travel_sheet.qr_sizes.process_url', 45)) !!}
                                 </div>
                             </td>
                             <td class="border border-black p-2 font-medium text-base">{{ $process->name }}</td>

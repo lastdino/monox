@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['web'])
+Route::middleware(config('monox.routes.middleware', ['web']))
     ->prefix(config('monox.routes.prefix'))
     ->group(function () {
         Route::scopeBindings();

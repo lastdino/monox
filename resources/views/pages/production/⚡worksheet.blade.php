@@ -14,8 +14,19 @@ new class extends Component
 {
     public ProductionOrder $order;
 
-    #[Url(as: 'process')]
     public $currentProcessId;
+
+    public function getUrlProcessParameterName(): string
+    {
+        return config('monox.production.worksheet_process_parameter', 'process');
+    }
+
+    public function queryString(): array
+    {
+        return [
+            'currentProcessId' => ['as' => $this->getUrlProcessParameterName()],
+        ];
+    }
 
     public $records = [];
 

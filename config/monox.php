@@ -72,5 +72,17 @@ return [
     'production' => [
         // Columns to search for worker when scanning worker code
         'worker_scan_columns' => ['id', 'email'],
+
+        // Query parameter name used for process selection in worksheet
+        'worksheet_process_parameter' => 'process',
+
+        // QR code settings for travel sheet
+        'travel_sheet' => [
+            'qr_sizes' => [
+                'order_url' => 60,
+                'lot_number' => 50,
+                'process_url' => 45,
+            ],
+        ],
     ],
 ];
