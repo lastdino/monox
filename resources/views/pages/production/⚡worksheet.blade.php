@@ -406,11 +406,24 @@ new class extends Component
             // 既存の数量があればセット
         }
 
+        if ($field->type === 'photo' && ! empty($this->fieldValue)) {
+            // 撮影済みの画像URLが入っているはず
+        }
+
         Flux::modal('annotation-modal')->show();
     }
 
-    public function saveAnnotation(): void
+    public function setPhoto(string $data): void
     {
+        $this->fieldValue = $data;
+    }
+
+    public function saveAnnotation(?string $capturedPhoto = null): void
+    {
+        if ($capturedPhoto) {
+            $this->fieldValue = $capturedPhoto;
+        }
+
         $field = ProductionAnnotationField::find($this->activeFieldId);
 
         $isWithinTolerance = true;
@@ -501,6 +514,16 @@ new class extends Component
                 'quantity' => in_array($field->type, ['material', 'material_quantity']) ? $this->consumedQuantity : null,
             ]
         );
+
+        if ($field->type === 'photo' && str_starts_with($this->fieldValue, 'data:image')) {
+            $media = $valueModel->addMediaFromBase64($this->fieldValue)
+                ->usingFileName('photo_'.now()->format('Ymd_His').'.jpg')
+                ->toMediaCollection('photo');
+
+            // value カラムにはメディアの ID を保持（URL ではなく route で表示するため）
+            $this->fieldValue = (string) $media->id;
+            $valueModel->update(['value' => $this->fieldValue]);
+        }
 
         // input_quantity, good_quantity, defective_quantity の場合は record も更新する
         if (in_array($field->type, ['input_quantity', 'good_quantity', 'defective_quantity']) && is_numeric($this->fieldValue)) {
@@ -733,9 +756,13 @@ new class extends Component
                                             style="left: {{ $field->x_percent }}%; top: {{ $field->y_percent }}%; width: {{ $field->width_percent }}%; height: {{ $field->height_percent }}%;"
                                         >
                                             @if($hasValue)
-                                                <span class="font-bold bg-white/70 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600' : 'text-zinc-600' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.5 }}cqh, 100px);">
-                                                    {{ $field->type === 'boolean' && $valModel->value ? '✓' : $valModel->value }}
-                                                </span>
+                                                @if($field->type === 'photo')
+                                                    <img src="{{ is_numeric($valModel->value) ? route('monox.media.show', $valModel->value) : $valModel->value }}" class="w-full h-full object-cover">
+                                                @else
+                                                    <span class="font-bold bg-white/70 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600' : 'text-zinc-600' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.5 }}cqh, 100px);">
+                                                        {{ $field->type === 'boolean' && $valModel->value ? '✓' : $valModel->value }}
+                                                    </span>
+                                                @endif
                                             @endif
                                         </div>
                                     @endforeach
@@ -755,13 +782,17 @@ new class extends Component
                                     wire:click="openAnnotation({{ $field->id }})"
                                 >
                                     @if($hasValue)
-                                        <span class="font-bold bg-white/90 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600' : 'text-zinc-800' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.6 }}cqh, 100px);">
-                                            @if($field->type === 'boolean' && $valModel->value)
-                                                ✓
-                                            @else
-                                                {{ $valModel->value }}
-                                            @endif
-                                        </span>
+                                        @if($field->type === 'photo')
+                                            <img src="{{ is_numeric($valModel->value) ? route('monox.media.show', $valModel->value) : $valModel->value }}" class="w-full h-full object-cover">
+                                        @else
+                                            <span class="font-bold bg-white/90 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600' : 'text-zinc-800' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.6 }}cqh, 100px);">
+                                                @if($field->type === 'boolean' && $valModel->value)
+                                                    ✓
+                                                @else
+                                                    {{ $valModel->value }}
+                                                @endif
+                                            </span>
+                                        @endif
                                     @endif
                                 </div>
                             @endforeach
@@ -845,6 +876,17 @@ new class extends Component
                         <flux:input wire:model="consumedQuantity" type="number" step="0.0001" label="使用数量" />
                         @if($f->related_field_id)
                             <flux:subheading>※ ロットは別途「{{ $f->relatedField?->label }}」で入力してください。</flux:subheading>
+                        @endif
+                    </div>
+                @elseif($f->type === 'photo')
+                    <div class="space-y-2">
+                        @if($fieldValue)
+                            <img src="{{ is_numeric($fieldValue) ? route('monox.media.show', $fieldValue) : $fieldValue }}" class="w-full rounded border">
+                            <flux:button wire:click="$set('fieldValue', null)" variant="danger" size="sm">再撮影</flux:button>
+                        @else
+                            <div @photo-captured="$wire.setPhoto($event.detail)">
+                                <livewire:monox_component::camera-capture />
+                            </div>
                         @endif
                     </div>
                 @else

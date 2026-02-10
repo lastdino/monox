@@ -22,16 +22,24 @@ Monoxは、Laravel 12およびLivewire 4をベースにした新しい生産管�
 - **PhpSpreadsheet**: ^5.4
 - **Spatie Laravel Medialibrary**: ^11.17
 - **TuncayBahadir Quar**: ^1.7
+- **jsQR**: ^1.4 (npm)
+- **FullCalendar**: ^6.1 (npm)
 
 ## インストール方法
 
-Composerを使用してパッケージをインストールできます。
+1. Composerを使用してパッケージをインストールできます。
 
 ```bash
 composer require lastdino/monox
 ```
 
-インストール後、必要に応じてマイグレーションを実行してください。
+2. 必要な npm パッケージをインストールします。
+
+```bash
+npm install jsqr @fullcalendar/core @fullcalendar/daygrid @fullcalendar/interaction @fullcalendar/list @fullcalendar/timegrid
+```
+
+3. インストール後、必要に応じてマイグレーションを実行してください。
 
 ```bash
 php artisan migrate
