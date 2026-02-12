@@ -427,6 +427,10 @@ new class extends Component
             // 撮影済みの画像URLが入っているはず
         }
 
+        if ($field->type === 'production_lot' && empty($this->fieldValue)) {
+            $this->fieldValue = $this->order->lot?->lot_number ?? '';
+        }
+
         Flux::modal('annotation-modal')->show();
     }
 
@@ -908,6 +912,8 @@ new class extends Component
                             </div>
                         @endif
                     </div>
+                @elseif($f->type === 'production_lot')
+                    <flux:input wire:model="fieldValue" label="製造ロット" readonly />
                 @else
                     <flux:input wire:model="fieldValue" label="入力値" />
                 @endif
