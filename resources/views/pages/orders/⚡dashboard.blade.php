@@ -1,20 +1,19 @@
 <?php
 
 use Flux\Flux;
-use Illuminate\Support\Facades\DB;
-use Lastdino\Monox\Models\Department;
 use Lastdino\Monox\Models\Item;
 use Lastdino\Monox\Models\Lot;
 use Lastdino\Monox\Models\Partner;
 use Lastdino\Monox\Models\SalesOrder;
 use Lastdino\Monox\Models\Shipment;
 use Lastdino\Monox\Models\StockMovement;
+use Lastdino\Monox\Traits\EnsuresPermissionsConfigured;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 new class extends Component
 {
-    use WithPagination;
+    use EnsuresPermissionsConfigured, WithPagination;
 
     public int $departmentId;
 
@@ -42,7 +41,7 @@ new class extends Component
     // Create Order Form
     public $partner_id = '';
 
-    public  $item_id = '';
+    public $item_id = '';
 
     public ?string $order_number = null;
 
@@ -67,6 +66,12 @@ new class extends Component
 
     public function createOrder(): void
     {
+        if (! auth()->user()->can('sales-orders.create.'.$this->departmentId)) {
+            Flux::toast('受注を登録する権限がありません。', variant: 'danger');
+
+            return;
+        }
+
         $this->validate([
             'partner_id' => ['required', 'exists:monox_partners,id'],
             'item_id' => ['required', 'exists:monox_items,id'],
@@ -142,6 +147,12 @@ new class extends Component
     {
         if ($this->editingEntryType === 'order') {
             $order = SalesOrder::findOrFail($this->editingEntryId);
+
+            if (! auth()->user()->can('sales-orders.status.'.$this->departmentId)) {
+                Flux::toast('受注ステータスを更新する権限がありません。', variant: 'danger');
+
+                return;
+            }
 
             if ($this->editingStatus === 'shipped') {
                 $this->validate([
@@ -309,9 +320,11 @@ new class extends Component
                 受注トレース
             </flux:button>
 
-            <flux:modal.trigger name="create-order">
-                <flux:button variant="primary" icon="plus">受注登録</flux:button>
-            </flux:modal.trigger>
+            @can('sales-orders.create.'.$this->departmentId)
+                <flux:modal.trigger name="create-order">
+                    <flux:button variant="primary" icon="plus">受注登録</flux:button>
+                </flux:modal.trigger>
+            @endcan
 
             <flux:radio.group wire:model.live="viewMode" variant="segmented" size="sm">
                 <flux:radio value="list" label="一覧" />
@@ -372,24 +385,43 @@ new class extends Component
                         <flux:table.cell>{{ $order->due_date ? $order->due_date->format(config('monox.datetime.formats.date', 'Y-m-d')) : '-' }}</flux:table.cell>
                         <flux:table.cell>{{ number_format($order->quantity, 2) }}</flux:table.cell>
                         <flux:table.cell>
-                            <div class="cursor-pointer" wire:click="openStatusModal({{ $order->id }}, 'order', '{{ $order->status }}', {{ $order->quantity }})">
+                            @can('sales-orders.status.'.$this->departmentId)
+                                <div class="cursor-pointer" wire:click="openStatusModal({{ $order->id }}, 'order', '{{ $order->status }}', {{ $order->quantity }})">
+                                    @switch($order->status)
+                                        @case('pending')
+                                            <flux:badge color="zinc" size="sm" icon="pencil-square" >未処理</flux:badge>
+                                            @break
+                                        @case('processing')
+                                            <flux:badge color="blue" size="sm" icon="pencil-square" >手配中</flux:badge>
+                                            @break
+                                        @case('shipped')
+                                            <flux:badge color="green" size="sm" icon="pencil-square" >出荷済み</flux:badge>
+                                            @break
+                                        @case('cancelled')
+                                            <flux:badge color="red" size="sm" icon="pencil-square" >キャンセル</flux:badge>
+                                            @break
+                                        @default
+                                            <flux:badge color="zinc" size="sm" icon="pencil-square" >{{ $order->status }}</flux:badge>
+                                    @endswitch
+                                </div>
+                            @else
                                 @switch($order->status)
                                     @case('pending')
-                                        <flux:badge color="zinc" size="sm" icon="pencil-square" >未処理</flux:badge>
+                                        <flux:badge color="zinc" size="sm">未処理</flux:badge>
                                         @break
                                     @case('processing')
-                                        <flux:badge color="blue" size="sm" icon="pencil-square" >手配中</flux:badge>
+                                        <flux:badge color="blue" size="sm">手配中</flux:badge>
                                         @break
                                     @case('shipped')
-                                        <flux:badge color="green" size="sm" icon="pencil-square" >出荷済み</flux:badge>
+                                        <flux:badge color="green" size="sm">出荷済み</flux:badge>
                                         @break
                                     @case('cancelled')
-                                        <flux:badge color="red" size="sm" icon="pencil-square" >キャンセル</flux:badge>
+                                        <flux:badge color="red" size="sm">キャンセル</flux:badge>
                                         @break
                                     @default
-                                        <flux:badge color="zinc" size="sm" icon="pencil-square" >{{ $order->status }}</flux:badge>
+                                        <flux:badge color="zinc" size="sm">{{ $order->status }}</flux:badge>
                                 @endswitch
-                            </div>
+                            @endcan
                         </flux:table.cell>
                     </flux:table.row>
                 @endforeach

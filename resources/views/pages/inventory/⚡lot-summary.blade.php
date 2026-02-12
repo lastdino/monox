@@ -1,20 +1,22 @@
 <?php
 
+use Carbon\Carbon;
 use Flux\Flux;
-use Lastdino\Monox\Models\Department;
+use Lastdino\Monox\Exports\LotInventoryExport;
 use Lastdino\Monox\Models\Lot;
 use Lastdino\Monox\Models\Process;
-use Lastdino\Monox\Exports\LotInventoryExport;
+use Lastdino\Monox\Traits\EnsuresPermissionsConfigured;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Carbon\Carbon;
 
 new class extends Component
 {
-    use WithPagination;
+    use EnsuresPermissionsConfigured, WithPagination;
 
     public int $departmentId;
+
     public string $targetDate;
+
     public string $search = '';
 
     public function mount($department): void
@@ -30,10 +32,16 @@ new class extends Component
 
     public function downloadExcel()
     {
-        $exporter = new LotInventoryExport();
+        if (! auth()->user()->can('stock.download.'.$this->departmentId)) {
+            Flux::toast('データをダウンロードする権限がありません。', variant: 'danger');
+
+            return null;
+        }
+
+        $exporter = new LotInventoryExport;
         $callback = $exporter->export($this->departmentId, $this->targetDate);
 
-        $fileName = "inventory_report_".str_replace('-', '', $this->targetDate).".xlsx";
+        $fileName = 'inventory_report_'.str_replace('-', '', $this->targetDate).'.xlsx';
 
         return response()->streamDownload($callback, $fileName, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -59,7 +67,7 @@ new class extends Component
             ->when($this->search, function ($q) {
                 $q->where(function ($q) {
                     $q->where('lot_number', 'like', '%'.$this->search.'%')
-                      ->orWhereHas('item', fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'));
+                        ->orWhereHas('item', fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'));
                 });
             })
             ->get()
@@ -68,7 +76,9 @@ new class extends Component
                 $wipData = $this->calculateWipAtDate($lot, $date, $processes);
                 $total = $stock + array_sum($wipData);
 
-                if ($total == 0 && empty($this->search)) return null;
+                if ($total == 0 && empty($this->search)) {
+                    return null;
+                }
 
                 return [
                     'item_name' => $lot->item->name,
@@ -158,9 +168,11 @@ new class extends Component
             <div><flux:input type="date" wire:model.live="targetDate" label="基準日" /></div>
 
             <flux:input wire:model.live.debounce.300ms="search" placeholder="品目・ロット検索..." icon="magnifying-glass" />
-            <div class="flex-none">
-                <flux:button wire:click="downloadExcel" icon="document-text">エクセル出力</flux:button>
-            </div>
+            @can('stock.download.'.$this->departmentId)
+                <div class="flex-none">
+                    <flux:button wire:click="downloadExcel" icon="document-text">エクセル出力</flux:button>
+                </div>
+            @endcan
         </div>
     </div>
 

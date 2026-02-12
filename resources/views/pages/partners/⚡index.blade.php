@@ -1,13 +1,14 @@
 <?php
 
 use Flux\Flux;
+use Lastdino\Monox\Traits\EnsuresPermissionsConfigured;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 new class extends Component
 {
-    use WithPagination;
+    use EnsuresPermissionsConfigured, WithPagination;
 
     public string $search = '';
 
@@ -32,6 +33,12 @@ new class extends Component
 
     public function delete(\Lastdino\Monox\Models\Partner $partner): void
     {
+        if (! auth()->user()->can('partners.manage.'.$this->departmentId)) {
+            Flux::toast('この取引先を削除する権限がありません。', variant: 'danger');
+
+            return;
+        }
+
         $partner->delete();
         Flux::toast('取引先を削除しました。');
     }
@@ -49,7 +56,7 @@ new class extends Component
             ->where('department_id', $this->departmentId)
             ->when($this->search, fn ($query) => $query->where(function ($q) {
                 $q->where('name', 'like', '%'.$this->search.'%')
-                  ->orWhere('code', 'like', '%'.$this->search.'%');
+                    ->orWhere('code', 'like', '%'.$this->search.'%');
             }))
             ->latest()
             ->paginate(10);
@@ -64,9 +71,11 @@ new class extends Component
             <x-monox::nav-menu :department="$this->departmentId" />
         </div>
 
-        <flux:modal.trigger name="create-partner">
-            <flux:button variant="primary" icon="plus">新規登録</flux:button>
-        </flux:modal.trigger>
+        @can('partners.manage.'.$this->departmentId)
+            <flux:modal.trigger name="create-partner">
+                <flux:button variant="primary" icon="plus">新規登録</flux:button>
+            </flux:modal.trigger>
+        @endcan
     </div>
 
     <div class="mb-4">
@@ -104,8 +113,13 @@ new class extends Component
                             <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" />
 
                             <flux:menu>
-                                <flux:menu.item icon="pencil-square" wire:click="editPartner({{ $partner->id }}, 'edit-partner')">編集</flux:menu.item>
-                                <flux:menu.item wire:click="delete({{ $partner->id }})" wire:confirm="本当に削除しますか？" icon="trash" variant="danger">削除</flux:menu.item>
+                                @can('partners.manage.'.$this->departmentId)
+                                    <flux:menu.item icon="pencil-square" wire:click="editPartner({{ $partner->id }}, 'edit-partner')">編集</flux:menu.item>
+                                @endcan
+
+                                @can('partners.manage.'.$this->departmentId)
+                                    <flux:menu.item wire:click="delete({{ $partner->id }})" wire:confirm="本当に削除しますか？" icon="trash" variant="danger">削除</flux:menu.item>
+                                @endcan
                             </flux:menu>
                         </flux:dropdown>
                     </flux:table.cell>

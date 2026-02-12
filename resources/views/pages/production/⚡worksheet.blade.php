@@ -166,6 +166,11 @@ new class extends Component
 
     public function exportExcel(WorksheetExport $export)
     {
+        if (! auth()->user()->can('production.download.'.$this->departmentId)) {
+            Flux::toast('データをダウンロードする権限がありません。', variant: 'danger');
+
+            return null;
+        }
         $result = $export->export($this->order);
         $writer = $result['writer'];
         $fileName = $result['fileName'];
@@ -671,7 +676,9 @@ new class extends Component
             <flux:subheading>ロット: {{ $order->lot->lot_number ?? '-' }} | 予定数: {{ number_format($order->target_quantity, 2) }} {{ $order->item->unit }}</flux:subheading>
         </div>
         <div class="flex items-center gap-4">
-            <flux:button wire:click="exportExcel" icon="document-arrow-down" variant="outline">Excel出力</flux:button>
+            @can('production.download.'.$this->departmentId)
+                <flux:button wire:click="exportExcel" icon="document-arrow-down" variant="outline">Excel出力</flux:button>
+            @endcan
             <div x-data="{ scanning: false }" class="flex items-center gap-2">
                 @if($currentWorker)
                     <flux:badge color="green" icon="user" variant="outline">{{ $currentWorker->{config('monox.display.worker_column', 'name')} }}</flux:badge>

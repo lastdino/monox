@@ -21,7 +21,7 @@ return new class extends Migration
         // 2. Item Types
         Schema::create('monox_item_types', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('department_id')->constrained('monox_departments')->cascadeOnDelete();
+            $table->foreignId('department_id');
             $table->string('value');
             $table->string('label');
             $table->integer('sort_order')->default(0);
@@ -31,7 +31,7 @@ return new class extends Migration
         // 3. Items
         Schema::create('monox_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('department_id')->nullable()->constrained('monox_departments')->nullOnDelete();
+            $table->foreignId('department_id')->nullable();
             $table->string('code')->unique();
             $table->string('name');
             $table->string('type');
@@ -45,7 +45,7 @@ return new class extends Migration
         // 4. Partners
         Schema::create('monox_partners', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('department_id')->nullable()->constrained('monox_departments')->nullOnDelete();
+            $table->foreignId('department_id')->nullable();
             $table->string('code')->unique();
             $table->string('name');
             $table->string('type');
@@ -58,7 +58,7 @@ return new class extends Migration
         // 5. BOMs
         Schema::create('monox_boms', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('department_id')->nullable()->constrained('monox_departments')->nullOnDelete();
+            $table->foreignId('department_id')->nullable();
             $table->foreignId('parent_item_id')->constrained('monox_items')->cascadeOnDelete();
             $table->foreignId('child_item_id')->constrained('monox_items')->cascadeOnDelete();
             $table->decimal('quantity', 12, 4)->default(1);
@@ -70,7 +70,7 @@ return new class extends Migration
         // 6. Lots
         Schema::create('monox_lots', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('department_id')->nullable()->constrained('monox_departments')->nullOnDelete();
+            $table->foreignId('department_id')->nullable();
             $table->foreignId('item_id')->constrained('monox_items')->cascadeOnDelete();
             $table->string('lot_number');
             $table->date('manufactured_at')->nullable();
@@ -81,7 +81,7 @@ return new class extends Migration
         // 7. Stock Movements
         Schema::create('monox_stock_movements', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('department_id')->nullable()->constrained('monox_departments')->nullOnDelete();
+            $table->foreignId('department_id')->nullable();
             $table->foreignId('item_id')->constrained('monox_items')->cascadeOnDelete();
             $table->foreignId('lot_id')->nullable()->constrained('monox_lots')->nullOnDelete();
             $table->decimal('quantity', 12, 4);
@@ -109,7 +109,7 @@ return new class extends Migration
         // 9. Production Orders
         Schema::create('monox_production_orders', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('department_id')->constrained('monox_departments')->cascadeOnDelete();
+            $table->foreignId('department_id');
             $table->foreignId('item_id')->constrained('monox_items')->cascadeOnDelete();
             $table->foreignId('lot_id')->nullable()->constrained('monox_lots')->nullOnDelete();
             $table->decimal('target_quantity', 12, 4);
@@ -180,7 +180,7 @@ return new class extends Migration
         // 13. Sales Orders
         Schema::create('monox_sales_orders', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('department_id')->constrained('monox_departments')->cascadeOnDelete();
+            $table->foreignId('department_id');
             $table->foreignId('partner_id')->constrained('monox_partners')->cascadeOnDelete();
             $table->foreignId('item_id')->constrained('monox_items')->cascadeOnDelete();
             $table->string('order_number')->index();
@@ -195,7 +195,7 @@ return new class extends Migration
         // 14. Shipments
         Schema::create('monox_shipments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('department_id')->constrained('monox_departments')->cascadeOnDelete();
+            $table->foreignId('department_id');
             $table->foreignId('sales_order_id')->nullable()->constrained('monox_sales_orders')->nullOnDelete();
             $table->foreignId('item_id')->constrained('monox_items')->cascadeOnDelete();
             $table->foreignId('lot_id')->nullable()->constrained('monox_lots')->nullOnDelete();

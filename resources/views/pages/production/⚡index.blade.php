@@ -1,12 +1,13 @@
 <?php
 
 use Flux\Flux;
+use Lastdino\Monox\Traits\EnsuresPermissionsConfigured;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 new class extends Component
 {
-    use WithPagination;
+    use EnsuresPermissionsConfigured, WithPagination;
 
     public int $departmentId;
 
@@ -15,7 +16,7 @@ new class extends Component
     public string $statusFilter = '';
 
     // Create Order Form
-    public  $item_id = '';
+    public $item_id = '';
 
     public ?string $lot_number = null;
 
@@ -50,6 +51,12 @@ new class extends Component
 
     public function createOrder(): void
     {
+        if (! auth()->user()->can('production.manage'.'.'.$this->departmentId)) {
+            Flux::toast('製造指図を作成する権限がありません。', variant: 'danger');
+
+            return;
+        }
+
         $this->validate([
             'item_id' => ['required', 'exists:monox_items,id'],
             'lot_number' => ['nullable', 'string', 'max:255'],
@@ -94,6 +101,12 @@ new class extends Component
 
     public function cancelOrder(\Lastdino\Monox\Models\ProductionOrder $order): void
     {
+        if (! auth()->user()->can('production.manage'.'.'.$this->departmentId)) {
+            Flux::toast('製造指図を取り消す権限がありません。', variant: 'danger');
+
+            return;
+        }
+
         if ($order->status !== 'pending') {
             Flux::toast('未着手の指図のみ取り消すことができます。', variant: 'danger');
 
@@ -114,9 +127,11 @@ new class extends Component
             <x-monox::nav-menu :department="$this->departmentId" />
         </div>
 
-        <flux:modal.trigger name="create-order">
-            <flux:button variant="primary" icon="plus">指図作成</flux:button>
-        </flux:modal.trigger>
+        @can('production.manage'. '.' . $this->departmentId)
+            <flux:modal.trigger name="create-order">
+                <flux:button variant="primary" icon="plus">指図作成</flux:button>
+            </flux:modal.trigger>
+        @endcan
     </div>
 
     <div class="mb-4 flex flex-col md:flex-row gap-4">
@@ -187,7 +202,9 @@ new class extends Component
                         <flux:button href="{{ route('monox.production.worksheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="document-text" square tooltip="ワークシート" />
 
                         @if ($order->status === 'pending')
-                            <flux:button wire:click="cancelOrder({{ $order->id }})" wire:confirm="この製造指図を取り消しますか？" variant="ghost" size="sm" icon="trash" color="danger" square tooltip="取り消し" />
+                            @can('production.manage'. '.' . $this->departmentId)
+                                <flux:button wire:click="cancelOrder({{ $order->id }})" wire:confirm="この製造指図を取り消しますか？" variant="ghost" size="sm" icon="trash" color="danger" square tooltip="取り消し" />
+                            @endcan
                         @endif
                     </flux:table.cell>
                 </flux:table.row>

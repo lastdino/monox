@@ -1,13 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Lastdino\Monox\Traits\EnsuresPermissionsConfigured;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 new class extends Component
 {
-    use WithPagination;
+    use EnsuresPermissionsConfigured, WithPagination;
 
     public string $search = '';
 
@@ -35,7 +36,14 @@ new class extends Component
 
     public function delete(\Lastdino\Monox\Models\Item $item): void
     {
+        if (! auth()->user()->can('items.manage.', $this->departmentId)) {
+            Flux::toast('この品目を削除する権限がありません。', variant: 'danger');
+
+            return;
+        }
+
         $item->delete();
+        Flux::toast('品目を削除しました。');
     }
 
     public function editItem(\Lastdino\Monox\Models\Item $item, string $modalName): void
@@ -96,13 +104,17 @@ new class extends Component
         </div>
 
         <div class="flex gap-2">
-            <flux:modal.trigger name="type-manager">
-                <flux:button variant="ghost" icon="cog-6-tooth">種類設定</flux:button>
-            </flux:modal.trigger>
+            @can('items.types.manage.'. $this->departmentId)
+                <flux:modal.trigger name="type-manager">
+                    <flux:button variant="ghost" icon="cog-6-tooth">種類設定</flux:button>
+                </flux:modal.trigger>
+            @endcan
 
-            <flux:modal.trigger name="create-item">
-                <flux:button variant="primary" icon="plus">新規登録</flux:button>
-            </flux:modal.trigger>
+            @can('items.manage.'. $this->departmentId)
+                <flux:modal.trigger name="create-item">
+                    <flux:button variant="primary" icon="plus">新規登録</flux:button>
+                </flux:modal.trigger>
+            @endcan
         </div>
     </div>
 
@@ -150,11 +162,17 @@ new class extends Component
                             <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" />
 
                             <flux:menu>
-                                <flux:menu.item icon="document-text" wire:click="editItem({{ $item->id }}, 'bom-manager')">BOM管理</flux:menu.item>
-                                <flux:menu.item icon="wrench-screwdriver" wire:click="editItem({{ $item->id }}, 'process-manager')">工程管理</flux:menu.item>
-                                <flux:menu.item icon="archive-box" wire:click="editItem({{ $item->id }}, 'inventory-manager')">在庫管理</flux:menu.item>
-                                <flux:menu.item icon="pencil-square" wire:click="editItem({{ $item->id }}, 'edit-item')">編集</flux:menu.item>
-                                <flux:menu.item wire:click="delete({{ $item->id }})" wire:confirm="本当に削除しますか？" icon="trash" variant="danger">削除</flux:menu.item>
+                                @can('items.manage.', $this->departmentId)
+                                    <flux:menu.item icon="document-text" wire:click="editItem({{ $item->id }}, 'bom-manager')">BOM管理</flux:menu.item>
+                                    <flux:menu.item icon="wrench-screwdriver" wire:click="editItem({{ $item->id }}, 'process-manager')">工程管理</flux:menu.item>
+                                @endcan
+                                @can('stock.manage.', $this->departmentId)
+                                        <flux:menu.item icon="archive-box" wire:click="editItem({{ $item->id }}, 'inventory-manager')">在庫管理</flux:menu.item>
+                                @endcan
+                                @can('items.manage.', $this->departmentId)
+                                    <flux:menu.item icon="pencil-square" wire:click="editItem({{ $item->id }}, 'edit-item')">編集</flux:menu.item>
+                                    <flux:menu.item wire:click="delete({{ $item->id }})" wire:confirm="本当に削除しますか？" icon="trash" variant="danger">削除</flux:menu.item>
+                                @endcan
                             </flux:menu>
                         </flux:dropdown>
 

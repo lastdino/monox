@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(config('monox.routes.middleware', ['web']))
+Route::middleware(array_merge(config('monox.routes.middleware', ['web']), ['monox.ensure-permissions']))
     ->prefix(config('monox.routes.prefix'))
     ->group(function () {
         Route::scopeBindings();
@@ -25,6 +25,9 @@ Route::middleware(config('monox.routes.middleware', ['web']))
 
         // 在庫・仕掛サマリー
         Route::livewire('{department}/inventory/lot-summary', 'monox::inventory.lot-summary')->name('monox.inventory.lot-summary');
+
+        // 権限設定
+        Route::livewire('{department}/permissions', 'monox::departments.permissions')->name('monox.departments.permissions');
 
         // 設定関連
         Route::livewire('processes/{process}/annotations', 'monox::processes.annotations')->name('monox.processes.annotations');

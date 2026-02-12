@@ -2,8 +2,10 @@
 
 namespace Lastdino\Monox;
 
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Lastdino\Monox\Http\Middleware\EnsurePermissionsAreConfigured;
 use Livewire\Livewire;
 
 class MonoxServiceProvider extends ServiceProvider
@@ -22,8 +24,10 @@ class MonoxServiceProvider extends ServiceProvider
     /**
      * Bootstrap services.
      */
-    public function boot(): void
+    public function boot(Router $router): void
     {
+        $router->aliasMiddleware('monox.ensure-permissions', EnsurePermissionsAreConfigured::class);
+
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'monox');
 

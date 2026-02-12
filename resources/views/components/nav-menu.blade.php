@@ -24,6 +24,10 @@
             在庫・仕掛
         </flux:menu.item>
 
+        <flux:menu.item icon="shield-check" href="{{ route('monox.departments.permissions', ['department' => $id]) }}" wire:navigate>
+            権限設定
+        </flux:menu.item>
+
         <flux:menu.separator />
 
         <flux:menu.item icon="cube" href="{{ route('monox.items.index', ['department' => $id]) }}" wire:navigate>

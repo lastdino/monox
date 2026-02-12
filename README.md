@@ -21,6 +21,7 @@ Monoxは、Laravel 12およびLivewire 4をベースにした新しい生産管�
 - **Livewire**: ^4.0
 - **PhpSpreadsheet**: ^5.4
 - **Spatie Laravel Medialibrary**: ^11.17
+- **Spatie Laravel Permission**: ^6.10
 - **TuncayBahadir Quar**: ^1.7
 - **jsQR**: ^1.4 (npm)
 - **FullCalendar**: ^6.1 (npm)
