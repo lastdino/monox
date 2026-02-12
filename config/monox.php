@@ -60,21 +60,9 @@ return [
     |
     */
     'models' => [
-        'department' => \Lastdino\Monox\Models\Department::class,
+        'department' => "\\Lastdino\\Monox\\Models\\Department",
         // ユーザー独自のモデルを使用する場合:
-        // 'department' => \App\Models\Department::class,
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Tables Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Define the table names used by the monox.
-    |
-    */
-    'tables' => [
-        'departments' => 'monox_departments',
+        // 'department' => "\\App\\Models\\Department",
     ],
 
     /*

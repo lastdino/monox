@@ -13,12 +13,12 @@ new #[Layout('monox::layouts.print')] class extends Component
     public int $departmentId;
     public ProductionOrder $order;
 
-    public function mount($department_id, $order): void
+    public function mount($department, $order): void
     {
-        if ($department_id instanceof \Illuminate\Database\Eloquent\Model) {
-            $this->departmentId = $department_id->getKey();
+        if ($department instanceof \Illuminate\Database\Eloquent\Model) {
+            $this->departmentId = $department->getKey();
         } else {
-            $this->departmentId = (int) $department_id;
+            $this->departmentId = (int) $department;
         }
 
         if ($order instanceof ProductionOrder) {
@@ -40,7 +40,7 @@ new #[Layout('monox::layouts.print')] class extends Component
 <div class="travel-sheet">
     <div class="no-print mb-4 flex justify-end">
         <flux:button icon="printer" variant="primary" onclick="window.print()">印刷する</flux:button>
-        <flux:button variant="ghost" href="{{ route('monox.production.index', ['department_id' => $departmentId]) }}" class="ml-2">戻る</flux:button>
+        <flux:button variant="ghost" href="{{ route('monox.production.index', ['department' => $departmentId]) }}" class="ml-2">戻る</flux:button>
     </div>
 
     <div class="sheet-container bg-white text-black p-4 sm:p-8 border border-gray-300 mx-auto shadow-sm print:shadow-none print:border-none print:p-0">

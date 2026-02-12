@@ -91,6 +91,19 @@ new class extends Component
     {
         return \Lastdino\Monox\Models\Item::where('department_id', $this->departmentId)->get();
     }
+
+    public function cancelOrder(\Lastdino\Monox\Models\ProductionOrder $order): void
+    {
+        if ($order->status !== 'pending') {
+            Flux::toast('未着手の指図のみ取り消すことができます。', variant: 'danger');
+
+            return;
+        }
+
+        $order->delete();
+
+        Flux::toast('製造指図を取り消しました。');
+    }
 };
 ?>
 
@@ -172,6 +185,10 @@ new class extends Component
                     <flux:table.cell align="end">
                         <flux:button href="{{ route('monox.production.travel-sheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="printer" square tooltip="トラベルシート" />
                         <flux:button href="{{ route('monox.production.worksheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="document-text" square tooltip="ワークシート" />
+
+                        @if ($order->status === 'pending')
+                            <flux:button wire:click="cancelOrder({{ $order->id }})" wire:confirm="この製造指図を取り消しますか？" variant="ghost" size="sm" icon="trash" color="danger" square tooltip="取り消し" />
+                        @endif
                     </flux:table.cell>
                 </flux:table.row>
             @endforeach
