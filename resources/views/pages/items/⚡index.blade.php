@@ -57,6 +57,7 @@ new class extends Component
     #[On('item-created')]
     #[On('item-updated')]
     #[On('item-types-updated')]
+    #[On('stock-updated')]
     public function refresh(): void
     {
         // Handled by Livewire

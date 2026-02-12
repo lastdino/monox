@@ -71,4 +71,16 @@ class InventoryTest extends TestCase
 
         expect($lotA->fresh()->current_stock)->toBe(10.0);
     }
+
+    public function test_inventory_manager_dispatches_event()
+    {
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_INV5', 'name' => 'Dept Inv 5']);
+        $item = Item::create(['name' => 'Event Test', 'code' => 'E001', 'type' => 'part', 'unit' => 'pcs', 'department_id' => $dept->id]);
+
+        Livewire::test('monox::items.inventory-manager', ['item' => $item])
+            ->set('type', 'in')
+            ->set('adjustmentQuantity', 10)
+            ->call('adjustStock')
+            ->assertDispatched('stock-updated');
+    }
 }

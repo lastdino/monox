@@ -74,7 +74,7 @@ new class extends Component
         ]);
 
         $this->reset(['adjustmentQuantity', 'reason', 'lotNumber', 'selectedLotId']);
-        $this->item->load(['stockMovements.lot', 'lots.stockMovements']);
+        $this->item = $this->item->fresh(['stockMovements.lot', 'lots.stockMovements']);
 
         Flux::toast('在庫を調整しました。');
         $this->dispatch('stock-updated');
