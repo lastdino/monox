@@ -36,7 +36,7 @@ new class extends Component
 
     public function delete(\Lastdino\Monox\Models\Item $item): void
     {
-        if (! auth()->user()->can('items.manage.', $this->departmentId)) {
+        if (! auth()->user()->can('items.manage.'. $this->departmentId)) {
             Flux::toast('この品目を削除する権限がありません。', variant: 'danger');
 
             return;
@@ -162,14 +162,14 @@ new class extends Component
                             <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" />
 
                             <flux:menu>
-                                @can('items.manage.', $this->departmentId)
+                                @can('items.manage.'. $this->departmentId)
                                     <flux:menu.item icon="document-text" wire:click="editItem({{ $item->id }}, 'bom-manager')">BOM管理</flux:menu.item>
                                     <flux:menu.item icon="wrench-screwdriver" wire:click="editItem({{ $item->id }}, 'process-manager')">工程管理</flux:menu.item>
                                 @endcan
-                                @can('stock.manage.', $this->departmentId)
+                                @can('stock.manage.'. $this->departmentId)
                                         <flux:menu.item icon="archive-box" wire:click="editItem({{ $item->id }}, 'inventory-manager')">在庫管理</flux:menu.item>
                                 @endcan
-                                @can('items.manage.', $this->departmentId)
+                                @can('items.manage.'. $this->departmentId)
                                     <flux:menu.item icon="pencil-square" wire:click="editItem({{ $item->id }}, 'edit-item')">編集</flux:menu.item>
                                     <flux:menu.item wire:click="delete({{ $item->id }})" wire:confirm="本当に削除しますか？" icon="trash" variant="danger">削除</flux:menu.item>
                                 @endcan
