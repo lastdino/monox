@@ -68,9 +68,9 @@ new class extends Component
             $this->order = ProductionOrder::findOrFail($order);
         }
 
-        $this->departmentId = request()->route('department_id') instanceof \Illuminate\Database\Eloquent\Model
-            ? request()->route('department_id')->getKey()
-            : (int) request()->route('department_id');
+        $this->departmentId = request()->route('department') instanceof \Illuminate\Database\Eloquent\Model
+            ? request()->route('department')->getKey()
+            : (int) request()->route('department');
 
         $this->order->load(['item.processes', 'productionRecords.annotationValues', 'lot']);
         $this->records = $this->order->productionRecords->keyBy('process_id');

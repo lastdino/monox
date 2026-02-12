@@ -24,7 +24,7 @@ new class extends Component
 
     public function mount(): void
     {
-        $department = request()->route('department_id');
+        $department = request()->route('department');
         if ($department instanceof \Illuminate\Database\Eloquent\Model) {
             $this->departmentId = $department->getKey();
         } elseif ($department) {
@@ -38,7 +38,7 @@ new class extends Component
     {
         $id = $this->departmentId;
         if (! $id) {
-            $department = request()->route('department_id');
+            $department = request()->route('department');
             if ($department instanceof \Illuminate\Database\Eloquent\Model) {
                 $id = $department->getKey();
             } elseif ($department) {
