@@ -22,12 +22,7 @@ new class extends Component
 
     public function mount(): void
     {
-        $department = request()->route('department');
-        if ($department instanceof \Illuminate\Database\Eloquent\Model) {
-            $this->departmentId = $department->getKey();
-        } elseif ($department) {
-            $this->departmentId = (int) $department;
-        }
+
     }
 
     protected function rules(): array
@@ -49,7 +44,7 @@ new class extends Component
 
         Partner::create($validated);
 
-        $this->reset();
+        $this->reset('code', 'name', 'type', 'email', 'phone','address');
 
         Flux::modal('create-partner')->close();
 

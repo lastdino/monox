@@ -208,5 +208,5 @@ new class extends Component
         <livewire:monox::departments.type-manager :department="$this->department" />
     @endif
 
-    <livewire:monox::items.create />
+    <livewire:monox::items.create :departmentId="$this->departmentId"/>
 </div>

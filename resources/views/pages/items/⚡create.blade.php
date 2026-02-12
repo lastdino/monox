@@ -24,13 +24,6 @@ new class extends Component
 
     public function mount(): void
     {
-        $department = request()->route('department');
-        if ($department instanceof \Illuminate\Database\Eloquent\Model) {
-            $this->departmentId = $department->getKey();
-        } elseif ($department) {
-            $this->departmentId = (int) $department;
-        }
-
         $this->type = $this->types[0]['value'] ?? 'part';
     }
 

@@ -132,5 +132,5 @@ new class extends Component
         <livewire:monox::partners.edit :partner="$activePartner" :key="'edit-'.($activePartner->id ?? 'new')" />
     @endisset
 
-    <livewire:monox::partners.create />
+    <livewire:monox::partners.create :departmentId="$this->departmentId"/>
 </div>
