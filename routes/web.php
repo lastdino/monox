@@ -27,7 +27,7 @@ Route::middleware(array_merge(config('monox.routes.middleware', ['web']), ['mono
         Route::livewire('{department}/inventory/lot-summary', 'monox::inventory.lot-summary')->name('monox.inventory.lot-summary');
 
         // 権限設定
-        Route::livewire('{department}/permissions', 'monox::departments.permissions')->name('monox.departments.permissions');
+        Route::livewire('{department}/permissions', 'monox::departments.permissions')->name('monox.departments.permissions')->middleware('auth');
 
         // 設定関連
         Route::livewire('processes/{process}/annotations', 'monox::processes.annotations')->name('monox.processes.annotations');
