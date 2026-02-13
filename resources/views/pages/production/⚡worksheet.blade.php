@@ -60,6 +60,25 @@ new class extends Component
 
     public $departmentId;
 
+    // Branching
+    public $branchLotNumber = '';
+
+    public $branchQuantity = 0;
+
+    public $reduceParentQuantity = true;
+
+    public $adjustTargetQuantity = true;
+
+    public function updatedInputQuantity(): void
+    {
+        $this->defective_quantity = max(0, (float) $this->input_quantity - (float) $this->good_quantity);
+    }
+
+    public function updatedGoodQuantity(): void
+    {
+        $this->defective_quantity = max(0, (float) $this->input_quantity - (float) $this->good_quantity);
+    }
+
     public function mount($order): void
     {
         if ($order instanceof ProductionOrder) {
@@ -152,6 +171,11 @@ new class extends Component
         return $this->process->template_media;
     }
 
+    public function getEffectiveMediaProperty()
+    {
+        return $this->getEffectiveTemplateMediaProperty();
+    }
+
     public function getIsFinalProcessProperty(): bool
     {
         $lastProcess = $this->order->item->processes->last();
@@ -159,9 +183,123 @@ new class extends Component
         return $lastProcess && $lastProcess->id === $this->currentProcessId;
     }
 
+    public function getRecordForProcess(int $processId)
+    {
+        $record = $this->records[$processId] ?? null;
+
+        if ($record) {
+            return $record;
+        }
+
+        return $this->getParentRecord($this->order, $processId);
+    }
+
     public function getRecordProperty()
     {
-        return $this->records[$this->currentProcessId] ?? null;
+        if (! $this->currentProcessId) {
+            return null;
+        }
+
+        return $this->getRecordForProcess($this->currentProcessId);
+    }
+
+    private function getParentRecord(ProductionOrder $order, int $processId)
+    {
+        if (! $order->parent_order_id) {
+            return null;
+        }
+
+        $parent = $order->parent;
+        $record = ProductionRecord::where('production_order_id', $parent->id)
+            ->where('process_id', $processId)
+            ->where('status', 'completed') // 完了済みのみ引き継ぐ
+            ->with('annotationValues')
+            ->first();
+
+        if ($record) {
+            return $record;
+        }
+
+        return $this->getParentRecord($parent, $processId);
+    }
+
+    public function createBranch(bool $shouldRedirect = true): void
+    {
+        if ($this->order->productionRecords()->whereIn('status', ['in_progress', 'paused'])->exists()) {
+            Flux::toast('進行中または一時停止中の工程があるため、枝番は作成できません。作業を完了または中止してください。', variant: 'danger');
+
+            return;
+        }
+
+        $this->validate([
+            'branchLotNumber' => ['required', 'string', 'max:255'],
+            'branchQuantity' => ['required', 'numeric', 'min:0.0001', 'max:'.$this->order->target_quantity],
+        ]);
+
+        $newTarget = max(0, $this->order->target_quantity - $this->branchQuantity);
+
+        // 親指図の更新（推奨運用フローに基づく）
+        if ($this->reduceParentQuantity) {
+            $this->order->update([
+                'target_quantity' => $newTarget,
+                'note' => ($this->order->note ? $this->order->note."\n" : '').'枝番 '.$this->branchLotNumber.' へ '.$this->branchQuantity.' 個分割しました。',
+            ]);
+
+            // 親指図の現在の工程に実績を記録（良品数0, 備考「枝番分割済み」）
+            $record = $this->record;
+            if (! $record) {
+                $record = ProductionRecord::create([
+                    'production_order_id' => $this->order->id,
+                    'process_id' => $this->currentProcessId,
+                    'worker_id' => $this->currentWorker?->id ?? Auth::id(),
+                    'status' => 'in_progress',
+                ]);
+            }
+
+            $record->update([
+                'good_quantity' => $record->good_quantity ?: 0,
+                'note' => ($record->note ? $record->note."\n" : '').'枝番 '.$this->branchLotNumber.' へ分割（'.$this->branchQuantity.' 個）',
+            ]);
+
+            if ($newTarget <= 0 && $this->reduceParentQuantity) {
+                $record->update(['status' => 'completed', 'work_finished_at' => now()]);
+                $this->order->update(['status' => 'completed']);
+            }
+        }
+
+        // ロット作成
+        $lot = \Lastdino\Monox\Models\Lot::firstOrCreate([
+            'lot_number' => $this->branchLotNumber,
+            'item_id' => $this->order->item_id,
+            'department_id' => $this->departmentId,
+        ]);
+
+        // 新しい指図を作成
+        $newOrder = ProductionOrder::create([
+            'department_id' => $this->departmentId,
+            'item_id' => $this->order->item_id,
+            'lot_id' => $lot->id,
+            'parent_order_id' => $this->order->id,
+            'target_quantity' => $this->branchQuantity,
+            'status' => 'in_progress', // 枝番はすぐに開始状態にする
+            'note' => $this->order->lot->lot_number.' からの枝番',
+        ]);
+
+        Flux::toast('枝番を作成しました。');
+
+        if ($shouldRedirect) {
+            Flux::modal('branch-modal')->close();
+
+            $this->redirect(route('monox.production.worksheet', [
+                'department' => $this->departmentId,
+                'order' => $newOrder->id,
+            ]), navigate: true);
+        } else {
+            // 入力値をリセットして現在の画面に留まる
+            $this->branchLotNumber = '';
+            $this->branchQuantity = 0;
+            $this->order->refresh(); // target_quantity を最新にする
+        }
     }
 
     public function exportExcel(WorksheetExport $export)
@@ -182,6 +320,12 @@ new class extends Component
 
     public function stamp(string $type): void
     {
+        if ($this->order->status === 'completed') {
+            Flux::toast('この指図は完了しているため操作できません。', variant: 'danger');
+
+            return;
+        }
+
         if (! $this->currentWorker) {
             Flux::toast('作業者を特定してください。', variant: 'danger');
 
@@ -241,8 +385,28 @@ new class extends Component
 
                 // 常にレコードの現在値をコンポーネントのプロパティに同期する
                 $this->input_quantity = $record->input_quantity ?? $this->input_quantity;
-                $this->good_quantity = $record->good_quantity ?? $this->good_quantity;
-                $this->defective_quantity = $record->defective_quantity ?? $this->defective_quantity;
+
+                if ($record->input_quantity > 0 || $record->status === 'completed') {
+                    $this->input_quantity = (float) $record->input_quantity;
+                } else {
+                    // レコードに投入数が未入力（または0）の場合、前工程の良品数または指図の予定数を初期値とする
+                    $prevProcess = $this->previousProcess;
+                    if ($prevProcess) {
+                        $prevRecord = $this->getRecordForProcess($prevProcess->id);
+                        $this->input_quantity = (float) ($prevRecord?->good_quantity ?? $this->order->target_quantity);
+                    } else {
+                        $this->input_quantity = (float) $this->order->target_quantity;
+                    }
+                }
+
+                if ($record->good_quantity > 0 || $record->status === 'completed') {
+                    $this->good_quantity = (float) $record->good_quantity;
+                } else {
+                    // デフォルトでは良品数も投入数と同じにする
+                    $this->good_quantity = $this->input_quantity;
+                }
+
+                $this->defective_quantity = (float) ($record->defective_quantity ?? ($this->input_quantity - $this->good_quantity));
 
                 if (! $hasInputQty || ! $hasGoodQty) {
                     Flux::modal('record-quantities-modal')->show();
@@ -340,6 +504,14 @@ new class extends Component
             'defective_quantity' => $this->defective_quantity,
         ]);
 
+        if ($this->adjustTargetQuantity && $this->defective_quantity > 0) {
+            $newTarget = max(0, $this->order->target_quantity - $this->defective_quantity);
+            $this->order->update([
+                'target_quantity' => $newTarget,
+                'note' => ($this->order->note ? $this->order->note."\n" : '').'工程 '.$this->process->name.' で不良が発生したため、予定数量を '.$this->defective_quantity.' 削減しました。',
+            ]);
+        }
+
         $record->update(['work_finished_at' => $now, 'status' => 'completed']);
 
         if ($this->isFinalProcess && $this->shouldUpdateInventory) {
@@ -372,6 +544,12 @@ new class extends Component
 
     public function openAnnotation(int $fieldId): void
     {
+        if ($this->order->status === 'completed') {
+            Flux::toast('この指図は完了しているため操作できません。', variant: 'danger');
+
+            return;
+        }
+
         if (! $this->record) {
             Flux::toast('先に作業を開始してください。', variant: 'danger');
 
@@ -676,10 +854,43 @@ new class extends Component
 <div class="space-y-6">
     <div class="flex items-center justify-between">
         <div>
-            <flux:heading size="xl">{{ $order->item->name }} - 製造ワークシート</flux:heading>
-            <flux:subheading>ロット: {{ $order->lot->lot_number ?? '-' }} | 予定数: {{ number_format($order->target_quantity, 2) }} {{ $order->item->unit }}</flux:subheading>
+            <div class="flex items-center gap-2">
+                <flux:heading size="xl">{{ $order->item->name }} - 製造ワークシート</flux:heading>
+                @if($order->parent_order_id || $order->children->isNotEmpty())
+                    @php $relatedOrders = $order->getAllRelatedOrders(); @endphp
+                    <flux:dropdown>
+                        <flux:button variant="ghost" size="sm" icon-trailing="chevron-down" class="font-mono">
+                            {{ $order->lot->lot_number }}
+                        </flux:button>
+                        <flux:menu>
+                            @foreach($relatedOrders as $ro)
+                                <flux:menu.item :href="route('monox.production.worksheet', ['department' => $departmentId, 'order' => $ro->id])" :disabled="$ro->id === $order->id">
+                                    {{ $ro->lot->lot_number }} ({{ number_format($ro->target_quantity, 1) }})
+                                </flux:menu.item>
+                            @endforeach
+                        </flux:menu>
+                    </flux:dropdown>
+                @endif
+            </div>
+            <flux:subheading>
+                ロット: {{ $order->lot->lot_number ?? '-' }} |
+                予定数: {{ number_format($order->target_quantity, 2) }} {{ $order->item->unit }}
+                @if($order->parent_order_id)
+                    | 親ロット: {{ $order->parent->lot->lot_number }}
+                @endif
+            </flux:subheading>
         </div>
         <div class="flex items-center gap-4">
+            @if($order->status === 'completed')
+                <flux:badge color="zinc" variant="solid" size="lg">この指図は完了しています</flux:badge>
+            @endif
+            <flux:modal.trigger name="branch-modal">
+                <flux:button
+                    icon="share"
+                    variant="outline"
+                    :disabled="$order->status === 'completed' || $order->productionRecords()->whereIn('status', ['in_progress', 'paused'])->exists()"
+                >枝番作成</flux:button>
+            </flux:modal.trigger>
             @can('production.download.'.$this->departmentId)
                 <flux:button wire:click="exportExcel" icon="document-arrow-down" variant="outline">Excel出力</flux:button>
             @endcan
@@ -699,27 +910,40 @@ new class extends Component
         <!-- 工程リスト -->
         <div class="lg:col-span-1 space-y-2">
             @foreach($order->item->processes as $p)
-                @php
-                    $rec = $records[$p->id] ?? null;
-                    $isActive = $currentProcessId === $p->id;
-                @endphp
-                <div wire:click="selectProcess({{ $p->id }})"
-                     class="p-4 rounded-lg border cursor-pointer transition-colors {{ $isActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-zinc-800' }}">
-                    <div class="flex items-center justify-between">
-                        <span class="font-medium">{{ $p->name }}</span>
-                        @if($rec?->status === 'completed')
-                            <flux:badge color="green" size="sm">完了</flux:badge>
-                        @elseif($rec?->status === 'paused')
-                            <flux:badge color="orange" size="sm">一時停止中</flux:badge>
-                        @elseif($rec?->status === 'stopped')
-                            <flux:badge color="red" size="sm">中止</flux:badge>
-                        @elseif($rec?->status === 'in_progress')
-                            <flux:badge color="blue" size="sm">進行中</flux:badge>
-                        @else
-                            <flux:badge color="zinc" size="sm">未着手</flux:badge>
-                        @endif
-                    </div>
-                </div>
+                                @php
+                                    $rec = $records[$p->id] ?? null;
+
+                                    // 自身の記録がない場合、親の記録をチェック
+                                    $isInherited = false;
+                                    if (! $rec) {
+                                        $rec = $this->getParentRecord($this->order, $p->id);
+                                        $isInherited = (bool) $rec;
+                                    }
+
+                                    $isActive = $currentProcessId === $p->id;
+                                @endphp
+                                <div wire:click="selectProcess({{ $p->id }})"
+                                     class="p-4 rounded-lg border cursor-pointer transition-colors {{ $isActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-zinc-800' }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex flex-col">
+                                            <span class="font-medium">{{ $p->name }}</span>
+                                            @if($isInherited)
+                                                <span class="text-[10px] text-zinc-400">親ロットから継承</span>
+                                            @endif
+                                        </div>
+                                        @if($rec?->status === 'completed')
+                                            <flux:badge color="green" size="sm">完了</flux:badge>
+                                        @elseif($rec?->status === 'paused')
+                                            <flux:badge color="orange" size="sm">一時停止中</flux:badge>
+                                        @elseif($rec?->status === 'stopped')
+                                            <flux:badge color="red" size="sm">中止</flux:badge>
+                                        @elseif($rec?->status === 'in_progress')
+                                            <flux:badge color="blue" size="sm">進行中</flux:badge>
+                                        @else
+                                            <flux:badge color="zinc" size="sm">未着手</flux:badge>
+                                        @endif
+                                    </div>
+                                </div>
             @endforeach
         </div>
 
@@ -728,9 +952,17 @@ new class extends Component
             @if($this->process)
                 <div class="p-6 bg-white dark:bg-zinc-800 rounded-lg border space-y-6">
                     <div class="flex items-center justify-between">
-                        <flux:heading size="lg">{{ $this->process->name }}</flux:heading>
+                        <div class="flex items-center gap-2">
+                            <flux:heading size="lg">{{ $this->process->name }}</flux:heading>
+                            @if($this->record && $this->record->production_order_id !== $this->order->id)
+                                <flux:badge color="zinc" variant="outline">親指図からの履歴参照中</flux:badge>
+                            @endif
+                        </div>
                         <div class="flex gap-2">
-                            @if($this->record?->status === 'paused')
+                            @if($this->record && $this->record->production_order_id !== $this->order->id)
+                                {{-- 親の記録を表示中の場合は操作ボタンを出さないか、または上書き開始ボタンを出す --}}
+                                <flux:button wire:click="stamp('work_start')" size="sm" variant="primary">この工程を独自に開始</flux:button>
+                            @elseif($this->record?->status === 'paused')
                                 <flux:button wire:click="stamp('resume')" size="sm" variant="primary" icon="play">再開</flux:button>
                             @elseif($this->record?->status === 'stopped')
                                 <flux:button disabled size="sm">段取開始</flux:button>
@@ -755,18 +987,24 @@ new class extends Component
                     </div>
 
                     @php
-                        $effectiveMedia = $this->effectiveTemplateMedia;
+                        $effectiveMedia = $this->effectiveMedia;
                     @endphp
 
-                    @if($effectiveMedia)
+                    @if($effectiveMedia || $this->process->share_template_with_previous)
                         <div class="relative inline-block w-full border rounded overflow-hidden">
-                            <img src="{{ route('monox.media.show', $effectiveMedia) }}" class="w-full h-auto" alt=""/>
+                            @if($effectiveMedia)
+                                <img src="{{ route('monox.media.show', $effectiveMedia) }}" class="w-full h-auto" alt=""/>
+                            @else
+                                <div class="w-full aspect-video bg-zinc-100 flex items-center justify-center text-zinc-400">
+                                    背景画像なし（共有設定）
+                                </div>
+                            @endif
 
                             {{-- 共有されている前工程すべてのアノテーションを表示 --}}
                             @if($this->process->share_template_with_previous)
                                 @foreach($this->sharedProcessesChain as $prevProc)
                                     @php
-                                        $prevRecord = $this->records[$prevProc->id] ?? null;
+                                        $prevRecord = $this->getRecordForProcess($prevProc->id);
                                     @endphp
                                     @foreach($prevProc->annotationFields as $field)
                                         @php
@@ -829,6 +1067,40 @@ new class extends Component
             @endif
         </div>
     </div>
+
+    <flux:modal name="branch-modal" class="md:w-96">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">枝番（子ロット）の作成</flux:heading>
+                <flux:subheading>現在のロットから分割して新しい指図を発行します。</flux:subheading>
+            </div>
+
+            <flux:input wire:model="branchLotNumber" label="枝番ロット番号" placeholder="例: {{ $order->lot->lot_number }}-1" />
+            <flux:input wire:model.live="branchQuantity" type="number" step="0.0001" label="分割数量" :max="$order->target_quantity" />
+
+            <div class="space-y-3 p-3 bg-zinc-50 dark:bg-white/5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <flux:checkbox wire:model.live="reduceParentQuantity" label="親ロットの予定数量から差し引く" />
+                @if($reduceParentQuantity)
+                    <div class="ml-6 space-y-2">
+                        <div class="text-sm text-zinc-500">
+                            親ロットの残り予定数: {{ number_format(max(0, $order->target_quantity - (float)$branchQuantity), 2) }}
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <div class="flex gap-2">
+                    <flux:spacer />
+                    <flux:modal.close>
+                        <flux:button variant="ghost">キャンセル</flux:button>
+                    </flux:modal.close>
+                    <flux:button wire:click="createBranch(false)" variant="outline">作成</flux:button>
+                    <flux:button wire:click="createBranch(true)" variant="primary">作成して切り替え</flux:button>
+                </div>
+            </div>
+        </div>
+    </flux:modal>
 
     <flux:modal name="annotation-modal" class="md:w-100">
         <form wire:submit="saveAnnotation" class="space-y-4">
@@ -937,9 +1209,13 @@ new class extends Component
                 <flux:subheading>投入数、良品数、不良数を入力してください。</flux:subheading>
             </div>
 
-            <flux:input wire:model="input_quantity" type="number" step="0.0001" label="投入数" />
-            <flux:input wire:model="good_quantity" type="number" step="0.0001" label="良品数" />
+            <flux:input wire:model.live="input_quantity" type="number" step="0.0001" label="投入数" />
+            <flux:input wire:model.live="good_quantity" type="number" step="0.0001" label="良品数" />
             <flux:input wire:model="defective_quantity" type="number" step="0.0001" label="不良数" />
+
+            <div class="p-3 bg-zinc-50 dark:bg-white/5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <flux:checkbox wire:model="adjustTargetQuantity" label="不良数分、指図の予定数量を削減する" />
+            </div>
 
             <div class="flex gap-2">
                 <flux:spacer />
@@ -958,8 +1234,8 @@ new class extends Component
 
             <div class="space-y-4">
                 <div class="grid grid-cols-3 gap-4">
-                    <flux:input wire:model="input_quantity" type="number" step="0.0001" label="投入数" />
-                    <flux:input wire:model="good_quantity" type="number" step="0.0001" label="良品数" />
+                    <flux:input wire:model.live="input_quantity" type="number" step="0.0001" label="投入数" />
+                    <flux:input wire:model.live="good_quantity" type="number" step="0.0001" label="良品数" />
                     <flux:input wire:model="defective_quantity" type="number" step="0.0001" label="不良数" />
                 </div>
 
@@ -970,6 +1246,10 @@ new class extends Component
                             入庫数: <strong>{{ number_format((float)$good_quantity, 4) }}</strong> {{ $order->item->unit }}
                         </div>
                     @endif
+                </div>
+
+                <div class="p-4 bg-zinc-50 dark:bg-white/5 rounded-lg">
+                    <flux:checkbox wire:model="adjustTargetQuantity" label="不良数分、指図の予定数量を削減する" />
                 </div>
             </div>
 

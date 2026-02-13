@@ -17,6 +17,7 @@ class ProductionOrder extends Model
         'department_id',
         'item_id',
         'lot_id',
+        'parent_order_id',
         'target_quantity',
         'status',
         'note',
@@ -25,6 +26,70 @@ class ProductionOrder extends Model
     protected $casts = [
         'target_quantity' => 'float',
     ];
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(ProductionOrder::class, 'parent_order_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(ProductionOrder::class, 'parent_order_id');
+    }
+
+    public function getAllRelatedOrders()
+    {
+        // 親を辿る
+        $ancestor = $this;
+        while ($ancestor->parent) {
+            $ancestor = $ancestor->parent;
+        }
+
+        // 最古の親から全ての子孫を取得する
+        return $this->collectDescendants($ancestor);
+    }
+
+    private function collectDescendants($order)
+    {
+        $orders = collect([$order]);
+        foreach ($order->children as $child) {
+            $orders = $orders->merge($this->collectDescendants($child));
+        }
+
+        return $orders;
+    }
+
+    public function getRecordForProcess(int $processId)
+    {
+        $record = $this->productionRecords()
+            ->where('process_id', $processId)
+            ->first();
+
+        if ($record) {
+            return $record;
+        }
+
+        return $this->getParentRecord($processId);
+    }
+
+    private function getParentRecord(int $processId)
+    {
+        if (! $this->parent_order_id) {
+            return null;
+        }
+
+        $parent = $this->parent;
+        $record = $parent->productionRecords()
+            ->where('process_id', $processId)
+            ->where('status', 'completed')
+            ->first();
+
+        if ($record) {
+            return $record;
+        }
+
+        return $parent->getParentRecord($processId);
+    }
 
     public function department(): BelongsTo
     {
