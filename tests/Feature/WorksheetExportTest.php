@@ -82,4 +82,52 @@ class WorksheetExportTest extends TestCase
             ->call('exportExcel')
             ->assertStatus(200);
     }
+
+    public function test_worksheet_pdf_export()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $department = Department::create(['code' => 'DEP2', 'name' => 'Dep 2']);
+        $item = Item::create([
+            'code' => 'ITEM-002',
+            'name' => 'Item 002',
+            'type' => 'part',
+            'unit' => 'pcs',
+            'department_id' => $department->id,
+        ]);
+
+        $proc1 = Process::create([
+            'item_id' => $item->id,
+            'name' => 'Process 1',
+            'sort_order' => 10,
+        ]);
+
+        $lot = Lot::create([
+            'item_id' => $item->id,
+            'lot_number' => 'LOT-002',
+            'department_id' => $department->id,
+        ]);
+
+        $order = ProductionOrder::create([
+            'department_id' => $department->id,
+            'item_id' => $item->id,
+            'lot_id' => $lot->id,
+            'target_quantity' => 100,
+            'status' => 'in_progress',
+        ]);
+
+        ProductionRecord::create([
+            'production_order_id' => $order->id,
+            'process_id' => $proc1->id,
+            'worker_id' => $user->id,
+            'status' => 'completed',
+        ]);
+
+        // Note: Actual PDF generation with image synthesis might fail in test env
+        // if template image is missing. But we can at least test the method call.
+        Livewire::test('monox::production.worksheet', ['order' => $order])
+            ->call('exportPdf')
+            ->assertStatus(200);
+    }
 }

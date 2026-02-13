@@ -3,6 +3,7 @@
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Lastdino\Monox\Exports\WorksheetExport;
+use Lastdino\Monox\Exports\WorksheetPdfExport;
 use Lastdino\Monox\Models\Process;
 use Lastdino\Monox\Models\ProductionAnnotationField;
 use Lastdino\Monox\Models\ProductionAnnotationValue;
@@ -315,6 +316,23 @@ new class extends Component
 
         return response()->streamDownload(function () use ($writer) {
             $writer->save('php://output');
+        }, $fileName);
+    }
+
+    public function exportPdf(WorksheetPdfExport $export)
+    {
+        if (! auth()->user()->can('production.download.'.$this->departmentId)) {
+            Flux::toast('データをダウンロードする権限がありません。', variant: 'danger');
+
+            return null;
+        }
+
+        $result = $export->export($this->order);
+        $content = $result['content'];
+        $fileName = $result['fileName'];
+
+        return response()->streamDownload(function () use ($content) {
+            echo $content;
         }, $fileName);
     }
 
@@ -893,6 +911,7 @@ new class extends Component
             </flux:modal.trigger>
             @can('production.download.'.$this->departmentId)
                 <flux:button wire:click="exportExcel" icon="document-arrow-down" variant="outline">Excel出力</flux:button>
+                <flux:button wire:click="exportPdf" icon="document-arrow-down" variant="outline">PDF出力</flux:button>
             @endcan
             <div x-data="{ scanning: false }" class="flex items-center gap-2">
                 @if($currentWorker)
