@@ -333,7 +333,9 @@ new class extends Component
 
         return response()->streamDownload(function () use ($content) {
             echo $content;
-        }, $fileName);
+        }, $fileName, [
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 
     public function stamp(string $type): void

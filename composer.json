@@ -27,6 +27,7 @@
         "phpoffice/phpspreadsheet": "^5.4",
         "spatie/laravel-medialibrary": "^11.17",
         "tuncaybahadir/quar": "^1.7",
-        "spatie/laravel-permission": "^6.10||^7.0"
+        "spatie/laravel-permission": "^6.10||^7.0",
+        "lastdino/chrome-laravel": "^0.1.2"
     }
 }
