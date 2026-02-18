@@ -32,6 +32,14 @@ class Lot extends Model
         ];
     }
 
+    public function scopeAvailable($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('expired_at')
+                ->orWhere('expired_at', '>=', now()->startOfDay());
+        });
+    }
+
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);

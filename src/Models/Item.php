@@ -24,12 +24,14 @@ class Item extends Model
         'description',
         'department_id',
         'auto_inventory_update',
+        'expiration_days',
     ];
 
     protected $casts = [
         'auto_inventory_update' => 'boolean',
         'unit_price' => 'float',
         'inventory_alert_quantity' => 'float',
+        'expiration_days' => 'integer',
     ];
 
     public function getTypeLabelAttribute(): string
@@ -76,7 +78,13 @@ class Item extends Model
 
     public function getCurrentStockAttribute(): float
     {
-        return (float) $this->stockMovements()->sum('quantity');
+        return (float) $this->stockMovements()
+            ->where(function ($query) {
+                $query->whereHas('lot', function ($q) {
+                    $q->available();
+                })->orWhereNull('lot_id');
+            })
+            ->sum('quantity');
     }
 
     /**

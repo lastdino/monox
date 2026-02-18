@@ -41,6 +41,16 @@ new class extends Component
 
         $lotId = $this->selectedLotId;
 
+        // 出庫の場合、有効期限をチェック
+        if ($this->type === 'out' && $lotId) {
+            $lot = Lot::find($lotId);
+            if ($lot->expired_at && $lot->expired_at->isPast()) {
+                $this->addError('selectedLotId', 'このロットは有効期限が切れているため出庫できません。');
+
+                return;
+            }
+        }
+
         // 出庫・調整の場合、在庫数を超えないかチェック
         if ($quantity < 0) {
             $availableStock = $lotId
@@ -56,10 +66,16 @@ new class extends Component
 
         // 入庫でロット番号が入力されている場合、新規作成または既存取得
         if ($this->type === 'in' && $this->lotNumber) {
+            $expiredAt = null;
+            if ($this->item->expiration_days) {
+                $expiredAt = now()->addDays($this->item->expiration_days);
+            }
+
             $lot = $this->item->lots()->firstOrCreate([
                 'lot_number' => $this->lotNumber,
             ], [
                 'department_id' => $this->item->department_id,
+                'expired_at' => $expiredAt,
             ]);
             $lotId = $lot->id;
         }
@@ -87,11 +103,12 @@ new class extends Component
 
     public function lots()
     {
-        return $this->item->lots()->get()->map(function ($lot) {
+        return $this->item->lots()->available()->get()->map(function ($lot) {
             return [
                 'id' => $lot->id,
                 'lot_number' => $lot->lot_number,
                 'current_stock' => $lot->current_stock,
+                'expired_at' => $lot->expired_at,
             ];
         });
     }

@@ -17,6 +17,7 @@ new class extends Component
     public string $unit = 'pcs';
     public ?float $unit_price = null;
     public float $inventory_alert_quantity = 0;
+    public ?int $expiration_days = null;
     public string $description = '';
 
     public bool $auto_inventory_update = false;
@@ -37,6 +38,7 @@ new class extends Component
         $this->unit = $item->unit;
         $this->unit_price = $item->unit_price;
         $this->inventory_alert_quantity = $item->inventory_alert_quantity ?? 0;
+        $this->expiration_days = $item->expiration_days;
         $this->description = $item->description ?? '';
         $this->auto_inventory_update = $item->auto_inventory_update ?? false;
     }
@@ -57,6 +59,7 @@ new class extends Component
             'unit' => ['required', 'string', 'max:50'],
             'unit_price' => ['nullable', 'numeric', 'min:0'],
             'inventory_alert_quantity' => ['required', 'numeric', 'min:0'],
+            'expiration_days' => ['nullable', 'integer', 'min:0'],
             'description' => ['nullable', 'string'],
             'auto_inventory_update' => ['boolean'],
         ];
@@ -102,6 +105,8 @@ new class extends Component
             <flux:input wire:model="unit_price" type="number" step="0.0001" label="単価" placeholder="0.00" />
 
             <flux:input wire:model="inventory_alert_quantity" type="number" step="0.0001" label="在庫アラート数" placeholder="0.00" />
+
+            <flux:input wire:model="expiration_days" type="number" label="有効期限（日数）" placeholder="365" />
 
             <flux:textarea wire:model="description" label="説明" />
 

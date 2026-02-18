@@ -81,6 +81,18 @@ new class extends Component
                 $q->whereExists(function ($sq) {
                     $sq->select(DB::raw(1))
                         ->from('monox_stock_movements')
+                        ->join('monox_lots', 'monox_stock_movements.lot_id', '=', 'monox_lots.id')
+                        ->whereColumn('monox_items.id', 'monox_stock_movements.item_id')
+                        ->where(function ($lq) {
+                            $lq->whereNull('monox_lots.expired_at')
+                                ->orWhere('monox_lots.expired_at', '>=', now()->startOfDay());
+                        })
+                        ->groupBy('monox_stock_movements.item_id')
+                        ->havingRaw('SUM(monox_stock_movements.quantity) > 0');
+                })->orWhereExists(function ($sq) {
+                    $sq->select(DB::raw(1))
+                        ->from('monox_stock_movements')
+                        ->whereNull('lot_id')
                         ->whereColumn('monox_items.id', 'monox_stock_movements.item_id')
                         ->groupBy('item_id')
                         ->havingRaw('SUM(quantity) > 0');

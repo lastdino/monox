@@ -18,6 +18,8 @@ new class extends Component
 
     public float $inventory_alert_quantity = 0;
 
+    public ?int $expiration_days = null;
+
     public string $description = '';
 
     public ?int $departmentId = null;
@@ -57,6 +59,7 @@ new class extends Component
             'unit' => ['required', 'string', 'max:50'],
             'unit_price' => ['nullable', 'numeric', 'min:0'],
             'inventory_alert_quantity' => ['required', 'numeric', 'min:0'],
+            'expiration_days' => ['nullable', 'integer', 'min:0'],
             'description' => ['nullable', 'string'],
         ];
     }
@@ -69,7 +72,7 @@ new class extends Component
 
         Item::create($validated);
 
-        $this->reset('code', 'name', 'unit_price', 'inventory_alert_quantity', 'description');
+        $this->reset('code', 'name', 'unit_price', 'inventory_alert_quantity', 'expiration_days', 'description');
         $this->type = $this->types[0]['value'] ?? 'part';
 
         Flux::modal('create-item')->close();
@@ -104,6 +107,8 @@ new class extends Component
             <flux:input wire:model="unit_price" type="number" step="0.0001" label="単価" placeholder="0.00" />
 
             <flux:input wire:model="inventory_alert_quantity" type="number" step="0.0001" label="在庫アラート数" placeholder="0.00" />
+
+            <flux:input wire:model="expiration_days" type="number" label="有効期限（日数）" placeholder="365" />
 
             <flux:textarea wire:model="description" label="説明" />
 

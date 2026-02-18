@@ -1145,10 +1145,12 @@ new class extends Component
                         @php
                             $lots = [];
                             if ($f->linked_item_id) {
-                                $lots = \Lastdino\Monox\Models\Lot::where('item_id', $f->linked_item_id)->get();
+                                $lots = \Lastdino\Monox\Models\Lot::where('item_id', $f->linked_item_id)
+                                    ->available()
+                                    ->get();
                             } else {
                                 // 紐付けがない場合は全ロット（運用に合わせて要検討）
-                                $lots = \Lastdino\Monox\Models\Lot::all();
+                                $lots = \Lastdino\Monox\Models\Lot::available()->get();
                             }
                         @endphp
 
@@ -1170,9 +1172,11 @@ new class extends Component
                         @php
                             $lots = [];
                             if ($f->linked_item_id) {
-                                $lots = \Lastdino\Monox\Models\Lot::where('item_id', $f->linked_item_id)->get();
+                                $lots = \Lastdino\Monox\Models\Lot::where('item_id', $f->linked_item_id)
+                                    ->available()
+                                    ->get();
                             } else {
-                                $lots = \Lastdino\Monox\Models\Lot::all();
+                                $lots = \Lastdino\Monox\Models\Lot::available()->get();
                             }
                         @endphp
                         <flux:select wire:model="selectedLotId" label="使用ロット">
