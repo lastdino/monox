@@ -6,6 +6,9 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Lastdino\Monox\Http\Middleware\EnsurePermissionsAreConfigured;
+use Lastdino\Monox\Http\Middleware\VerifyApiKey;
+use Lastdino\Monox\Models\StockMovement;
+use Lastdino\Monox\Observers\StockMovementObserver;
 use Livewire\Livewire;
 
 class MonoxServiceProvider extends ServiceProvider
@@ -27,6 +30,7 @@ class MonoxServiceProvider extends ServiceProvider
     public function boot(Router $router): void
     {
         $router->aliasMiddleware('monox.ensure-permissions', EnsurePermissionsAreConfigured::class);
+        $router->aliasMiddleware('monox.api-key', VerifyApiKey::class);
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'monox');
@@ -48,10 +52,13 @@ class MonoxServiceProvider extends ServiceProvider
 
         $this->registerLivewireComponents();
 
+        StockMovement::observe(StockMovementObserver::class);
+
         $this->app->booted(function () {
             if (Route::hasMacro('livewire')) {
                 $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
             }
+            $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
         });
     }
 

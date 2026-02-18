@@ -15,6 +15,7 @@ class StockMovement extends Model
         'quantity',
         'type',
         'reason',
+        'is_external_sync',
         'moved_at',
         'department_id',
         'production_annotation_value_id',
@@ -55,6 +56,7 @@ class StockMovement extends Model
     {
         return [
             'moved_at' => 'datetime',
+            'is_external_sync' => 'boolean',
         ];
     }
 }

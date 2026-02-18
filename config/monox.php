@@ -89,4 +89,29 @@ return [
             ],
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Integration Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure external service integrations.
+    |
+    */
+    'integrations' => [
+        'procurement_flow' => [
+            'url'     => env('PROCUREMENT_FLOW_URL', 'https://your-procurement-system.com'),
+            'api_key' => env('PROCUREMENT_FLOW_API_KEY'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure API related settings, including security keys.
+    |
+    */
+    'api_key' => env('MONOX_API_KEY'),
 ];

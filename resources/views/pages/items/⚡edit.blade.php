@@ -21,6 +21,7 @@ new class extends Component
     public string $description = '';
 
     public bool $auto_inventory_update = false;
+    public bool $sync_to_procurement = false;
 
     public function mount(?Item $item = null): void
     {
@@ -41,6 +42,7 @@ new class extends Component
         $this->expiration_days = $item->expiration_days;
         $this->description = $item->description ?? '';
         $this->auto_inventory_update = $item->auto_inventory_update ?? false;
+        $this->sync_to_procurement = $item->sync_to_procurement ?? false;
     }
 
     public function getTypesProperty(): array
@@ -62,6 +64,7 @@ new class extends Component
             'expiration_days' => ['nullable', 'integer', 'min:0'],
             'description' => ['nullable', 'string'],
             'auto_inventory_update' => ['boolean'],
+            'sync_to_procurement' => ['boolean'],
         ];
     }
 
@@ -111,6 +114,8 @@ new class extends Component
             <flux:textarea wire:model="description" label="説明" />
 
             <flux:checkbox wire:model="auto_inventory_update" label="最終工程完了時に在庫を自動更新する" />
+
+            <flux:checkbox wire:model="sync_to_procurement" label="資材管理(procurement-flow)と在庫を連動する" />
 
             <div class="flex">
                 <flux:spacer />

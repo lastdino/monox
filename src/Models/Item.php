@@ -24,11 +24,13 @@ class Item extends Model
         'description',
         'department_id',
         'auto_inventory_update',
+        'sync_to_procurement',
         'expiration_days',
     ];
 
     protected $casts = [
         'auto_inventory_update' => 'boolean',
+        'sync_to_procurement' => 'boolean',
         'unit_price' => 'float',
         'inventory_alert_quantity' => 'float',
         'expiration_days' => 'integer',

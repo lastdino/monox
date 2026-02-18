@@ -24,6 +24,9 @@ new class extends Component
 
     public ?int $departmentId = null;
 
+    public bool $auto_inventory_update = false;
+    public bool $sync_to_procurement = false;
+
     public function mount(): void
     {
         $this->type = $this->types[0]['value'] ?? 'part';
@@ -61,6 +64,8 @@ new class extends Component
             'inventory_alert_quantity' => ['required', 'numeric', 'min:0'],
             'expiration_days' => ['nullable', 'integer', 'min:0'],
             'description' => ['nullable', 'string'],
+            'auto_inventory_update' => ['boolean'],
+            'sync_to_procurement' => ['boolean'],
         ];
     }
 
@@ -72,7 +77,7 @@ new class extends Component
 
         Item::create($validated);
 
-        $this->reset('code', 'name', 'unit_price', 'inventory_alert_quantity', 'expiration_days', 'description');
+        $this->reset('code', 'name', 'unit_price', 'inventory_alert_quantity', 'expiration_days', 'description', 'auto_inventory_update', 'sync_to_procurement');
         $this->type = $this->types[0]['value'] ?? 'part';
 
         Flux::modal('create-item')->close();
@@ -111,6 +116,10 @@ new class extends Component
             <flux:input wire:model="expiration_days" type="number" label="有効期限（日数）" placeholder="365" />
 
             <flux:textarea wire:model="description" label="説明" />
+
+            <flux:checkbox wire:model="auto_inventory_update" label="最終工程完了時に在庫を自動更新する" />
+
+            <flux:checkbox wire:model="sync_to_procurement" label="資材管理(procurement-flow)と在庫を連動する" />
 
             <div class="flex">
                 <flux:spacer />
