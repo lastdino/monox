@@ -170,115 +170,12 @@ new class extends Component
      */
     public function trendChartData(): array
     {
-        if (empty($this->chartFieldIds)) {
-            return [];
-        }
-
-        $query = ProductionAnnotationValue::whereIn('field_id', $this->chartFieldIds)
-            ->with(['productionRecord.productionOrder.lot'])
-            ->whereHas('productionRecord', function ($q) {
-                $q->whereNotNull('work_finished_at');
-                if ($this->chartProcessId) {
-                    $q->where('process_id', $this->chartProcessId);
-                }
-            });
-
-        $values = $query->get()
-            ->groupBy('production_record_id')
-            ->map(function ($group) {
-                $first = $group->first();
-                $record = $first->productionRecord;
-
-                // 複数項目がある場合の集計
-                $sum = $group->sum(fn($v) => (float)$v->value);
-                $val = $this->calcMode === 'sum' ? $sum : $sum / $group->count();
-
-                return [
-                    'record_id' => $record->id,
-                    'finished_at' => $record->work_finished_at,
-                    'lot_number' => $record->productionOrder->lot?->lot_number,
-                    'value' => $val,
-                ];
-            })
-            ->sortByDesc('finished_at')
-            ->take($this->chartLimit)
-            ->sortBy('finished_at')
-            ->values();
-
-        $labels = $values->map(fn ($v) => $v['lot_number'] ?? $v['finished_at']->format(config('monox.datetime.formats.short_datetime', 'm/d H:i')))->toArray();
-        $data = $values->map(fn ($v) => (float) $v['value'])->toArray();
-
-        // 基準値の取得 (単一選択時のみ有効、または最初の項目を使用)
-        $firstFieldId = reset($this->chartFieldIds);
-        $field = ProductionAnnotationField::find($firstFieldId);
-
-        // 指標の計算
-        $stats = [
-            'avg' => null,
-            'cp' => null,
-            'cpk' => null,
-            'stdDev' => null,
-        ];
-
-        $ucl = null;
-        $lcl = null;
-
-        if (count($data) >= 2) {
-            $n = count($data);
-            $avg = array_sum($data) / $n;
-            $stats['avg'] = round($avg, 3);
-
-            // 標準偏差 (不偏標準偏差)
-            $variance = array_sum(array_map(fn ($x) => pow($x - $avg, 2), $data)) / ($n - 1);
-            $stdDev = sqrt($variance);
-            $stats['stdDev'] = round($stdDev, 3);
-
-            if ($this->showSpcLimits) {
-                $ucl = round($avg + 3 * $stdDev, 3);
-                $lcl = round($avg - 3 * $stdDev, 3);
-            }
-
-            if ($stdDev > 0) {
-                $lsl = $field->min_value;
-                $usl = $field->max_value;
-
-                if ($lsl !== null && $usl !== null) {
-                    $stats['cp'] = round(($usl - $lsl) / (6 * $stdDev), 2);
-                }
-
-                if ($lsl !== null || $usl !== null) {
-                    $cpkUpper = $usl !== null ? ($usl - $avg) / (3 * $stdDev) : PHP_FLOAT_MAX;
-                    $cpkLower = $lsl !== null ? ($avg - $lsl) / (3 * $stdDev) : PHP_FLOAT_MAX;
-                    $stats['cpk'] = round(min($cpkUpper, $cpkLower), 2);
-                }
-            }
-        }
-
-        $label = count($this->chartFieldIds) > 1
-            ? ($this->calcMode === 'avg' ? '複数項目の平均' : '複数項目の合計')
-            : ($field->label ?? '値');
-
-        return [
-            'labels' => $labels,
-            'datasets' => [
-                [
-                    'label' => $label,
-                    'data' => $data,
-                    'borderColor' => '#2563eb',
-                    'backgroundColor' => 'rgba(37, 99, 235, 0.1)',
-                    'fill' => true,
-                    'tension' => 0.1,
-                ],
-            ],
-            'thresholds' => [
-                'min' => $field->min_value,
-                'max' => $field->max_value,
-                'target' => $field->target_value,
-                'ucl' => $ucl,
-                'lcl' => $lcl,
-            ],
-            'stats' => $stats,
-        ];
+        return \Lastdino\Monox\Services\TrendService::buildTrendData(
+            $this->chartFieldIds,
+            $this->chartProcessId,
+            $this->calcMode,
+            $this->chartLimit
+        );
     }
 
     public function getItemsProperty()
@@ -308,7 +205,7 @@ new class extends Component
     {
         if ($this->chartProcessId) {
             return ProductionAnnotationField::where('process_id', $this->chartProcessId)
-                ->where('type', 'number')
+                ->whereIn('type', ['number', 'material', 'material_quantity'])
                 ->get();
         }
 
