@@ -40,6 +40,7 @@ class WorksheetPdfExport
                     'width' => $field->width_percent,
                     'height' => $field->height_percent,
                     'value' => $value->value,
+                    'is_within_tolerance' => $value->is_within_tolerance,
                 ];
 
                 if ($field->type === 'photo') {

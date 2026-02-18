@@ -37,9 +37,20 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12pt;
+            font-size: 10pt;
             color: #000;
             line-height: 1.2;
+        }
+        .annotation-value {
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 1px 3px;
+            border-radius: 2px;
+            white-space: nowrap;
+        }
+        .annotation-out-of-range {
+            color: #dc2626;
+            background-color: rgba(254, 242, 242, 0.9);
+            border: 1px solid #ef4444;
         }
         .annotation-photo {
             object-fit: contain;
@@ -63,7 +74,9 @@
                     @if($annotation['type'] === 'photo' && isset($annotation['photo_base64']))
                         <img src="{{ $annotation['photo_base64'] }}" class="annotation-photo" style="width: 100%; height: 100%;">
                     @else
-                        {{ $annotation['value'] }}
+                        <span class="annotation-value {{ ($annotation['is_within_tolerance'] ?? true) ? '' : 'annotation-out-of-range' }}">
+                            {{ $annotation['value'] }}
+                        </span>
                     @endif
                 </div>
             @endforeach

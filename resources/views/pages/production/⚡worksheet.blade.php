@@ -646,7 +646,7 @@ new class extends Component
         $field = ProductionAnnotationField::find($this->activeFieldId);
 
         $isWithinTolerance = true;
-        if (in_array($field->type, ['number', 'input_quantity', 'good_quantity', 'defective_quantity']) && is_numeric($this->fieldValue)) {
+        if (in_array($field->type, ['number', 'input_quantity', 'good_quantity', 'defective_quantity', 'material_quantity']) && is_numeric($this->fieldValue)) {
             $val = (float) $this->fieldValue;
             if (($field->min_value !== null && $val < $field->min_value) ||
                 ($field->max_value !== null && $val > $field->max_value)) {
@@ -1040,8 +1040,12 @@ new class extends Component
                                             @if($hasValue)
                                                 @if($field->type === 'photo')
                                                     <img src="{{ is_numeric($valModel->value) ? route('monox.media.show', $valModel->value) : $valModel->value }}" class="w-full h-full object-cover">
+                                                @elseif($field->type === 'timestamp')
+                                                    <span class="font-bold bg-white/70 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600 bg-red-100/90 ring-1 ring-red-500' : 'text-zinc-600' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.5 }}cqh, 100px);">
+                                                        {{ \Carbon\Carbon::parse($valModel->value)->format(config('monox.datetime.formats.datetime', 'Y/m/d H:i')) }}
+                                                    </span>
                                                 @else
-                                                    <span class="font-bold bg-white/70 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600' : 'text-zinc-600' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.5 }}cqh, 100px);">
+                                                    <span class="font-bold bg-white/70 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600 bg-red-100/90 ring-1 ring-red-500' : 'text-zinc-600' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.5 }}cqh, 100px);">
                                                         {{ $field->type === 'boolean' && $valModel->value ? '✓' : $valModel->value }}
                                                     </span>
                                                 @endif
@@ -1066,8 +1070,12 @@ new class extends Component
                                     @if($hasValue)
                                         @if($field->type === 'photo')
                                             <img src="{{ is_numeric($valModel->value) ? route('monox.media.show', $valModel->value) : $valModel->value }}" class="w-full h-full object-cover">
+                                        @elseif($field->type === 'timestamp')
+                                            <span class="font-bold bg-white/90 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600 bg-red-50/90 ring-1 ring-red-500' : 'text-zinc-800' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.6 }}cqh, 100px);">
+                                                {{ \Carbon\Carbon::parse($valModel->value)->format(config('monox.datetime.formats.datetime', 'Y/m/d H:i')) }}
+                                            </span>
                                         @else
-                                            <span class="font-bold bg-white/90 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600' : 'text-zinc-800' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.6 }}cqh, 100px);">
+                                            <span class="font-bold bg-white/90 px-1 rounded truncate max-w-full {{ $outOfTolerance ? 'text-red-600 bg-red-50/90 ring-1 ring-red-500' : 'text-zinc-800' }}" style="font-size: clamp(8px, {{ $field->height_percent * 0.6 }}cqh, 100px);">
                                                 @if($field->type === 'boolean' && $valModel->value)
                                                     ✓
                                                 @else
@@ -1194,6 +1202,9 @@ new class extends Component
                 @elseif($f->type === 'material_quantity')
                     <div class="space-y-4">
                         <flux:input wire:model="consumedQuantity" type="number" step="0.0001" label="使用数量" />
+                        @if($f->min_value !== null || $f->max_value !== null)
+                            <div class="text-xs text-zinc-500">許容範囲: {{ $f->min_value ?? '-∞' }} ～ {{ $f->max_value ?? '+∞' }}</div>
+                        @endif
                         @if($f->related_field_id)
                             <flux:subheading>※ ロットは別途「{{ $f->relatedField?->label }}」で入力してください。</flux:subheading>
                         @endif
