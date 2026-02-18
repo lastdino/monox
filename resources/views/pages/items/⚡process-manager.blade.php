@@ -38,7 +38,7 @@ new class extends Component
             'standard_time_minutes' => ['nullable', 'numeric', 'min:0'],
             'work_in_process_unit_price' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'template_image' => ['nullable', 'image', 'max:2048'],
+            'template_image' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $maxOrder = $this->item->processes()->max('sort_order') ?? 0;
@@ -86,7 +86,7 @@ new class extends Component
             'standard_time_minutes' => ['nullable', 'numeric', 'min:0'],
             'work_in_process_unit_price' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'template_image' => ['nullable', 'image', 'max:2048'],
+            'template_image' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $process = Process::findOrFail($this->editingProcessId);
