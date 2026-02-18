@@ -60,7 +60,7 @@ new #[Layout('monox::layouts.print')] class extends Component
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-2 gap-4 mb-4">
             <div class="border border-black p-3 flex justify-between items-center">
                 <div>
                     <div class="text-xs text-gray-500 uppercase leading-none mb-1">品目名 / Item Name</div>
@@ -87,8 +87,14 @@ new #[Layout('monox::layouts.print')] class extends Component
                 <div class="text-xs text-gray-500 uppercase leading-none mb-1">予定数量 / Target Quantity</div>
                 <div class="text-xl font-bold">{{ number_format($order->target_quantity, 2) }} {{ $order->item->unit }}</div>
             </div>
-
         </div>
+
+        @if($order->item->description)
+            <div class="border border-black p-3 mb-6">
+                <div class="text-xs text-gray-500 uppercase leading-none mb-1">品目説明 / Item Description</div>
+                <div class="text-sm whitespace-pre-wrap">{{ $order->item->description }}</div>
+            </div>
+        @endif
 
         <div class="mb-4">
             <h2 class="text-xs font-bold border-b border-black mb-2 uppercase text-gray-700 pb-1">製造工程 / Production Processes</h2>
