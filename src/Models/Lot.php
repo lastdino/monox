@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Lot extends Model
 {
@@ -62,7 +63,12 @@ class Lot extends Model
         return $this->getStockAtDate(now());
     }
 
-    public function productionOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function productionOrder(): HasOne
+    {
+        return $this->hasOne(ProductionOrder::class);
+    }
+
+    public function productionOrders(): HasMany
     {
         return $this->hasMany(ProductionOrder::class);
     }
