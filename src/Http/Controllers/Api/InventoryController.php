@@ -3,10 +3,10 @@
 namespace Lastdino\Monox\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Lastdino\Monox\Models\Item;
 use Lastdino\Monox\Models\Lot;
 use Lastdino\Monox\Models\StockMovement;
-use Illuminate\Routing\Controller;
 
 class InventoryController extends Controller
 {
@@ -14,10 +14,10 @@ class InventoryController extends Controller
     {
         // 1. バリデーション
         $validated = $request->validate([
-            'sku'    => 'required|exists:monox_items,code',
+            'sku' => 'required|exists:monox_items,code',
             'lot_no' => 'nullable|string',
-            'qty'    => 'required|numeric',
-            'type'   => 'required|in:in,out',
+            'qty' => 'required|numeric',
+            'type' => 'required|in:in,out',
             'reason' => 'nullable|string',
         ]);
 
@@ -25,12 +25,14 @@ class InventoryController extends Controller
 
         // 2. ロットの取得または作成
         $lotId = null;
-        if (!empty($validated['lot_no'])) {
+        $isNewLot = false;
+        if (! empty($validated['lot_no'])) {
             $lot = Lot::firstOrCreate(
                 ['item_id' => $item->id, 'lot_number' => $validated['lot_no']],
                 ['department_id' => $item->department_id]
             );
             $lotId = $lot->id;
+            $isNewLot = $lot->wasRecentlyCreated;
         }
 
         // 3. 在庫変動の記録
@@ -38,20 +40,33 @@ class InventoryController extends Controller
         $quantity = $validated['type'] === 'out' ? -abs($validated['qty']) : abs($validated['qty']);
 
         $movement = StockMovement::create([
-            'item_id'       => $item->id,
-            'lot_id'        => $lotId,
-            'quantity'      => $quantity,
-            'type'          => $validated['type'],
-            'reason'        => $validated['reason'] ?: 'procurement-flow からの同期',
+            'item_id' => $item->id,
+            'lot_id' => $lotId,
+            'quantity' => $quantity,
+            'type' => $validated['type'],
+            'reason' => ($validated['reason'] ?? null) ?: 'matex からの同期',
             'is_external_sync' => true,
-            'moved_at'      => now(),
+            'moved_at' => now(),
             'department_id' => $item->department_id,
         ]);
+
+        // 4. 製造指図の自動発行
+        // 条件: 入庫であること、新規ロットであること、工程が登録されていること
+        if ($validated['type'] === 'in' && $isNewLot && $item->processes()->exists()) {
+            \Lastdino\Monox\Models\ProductionOrder::create([
+                'department_id' => $item->department_id,
+                'item_id' => $item->id,
+                'lot_id' => $lotId,
+                'target_quantity' => abs($validated['qty']),
+                'status' => 'pending',
+                'note' => 'API入庫による自動発行',
+            ]);
+        }
 
         return response()->json([
             'status' => 'success',
             'message' => 'Inventory updated in Monox',
-            'movement_id' => $movement->id
+            'movement_id' => $movement->id,
         ]);
     }
 }
