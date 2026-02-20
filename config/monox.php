@@ -95,14 +95,12 @@ return [
     | Integration Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure external service integrations.
+    | Configure Matex service integrations.
     |
     */
-    'integrations' => [
-        'procurement_flow' => [
-            'url'     => env('PROCUREMENT_FLOW_URL', 'https://your-procurement-system.com'),
-            'api_key' => env('PROCUREMENT_FLOW_API_KEY'),
-        ],
+    'matex' => [
+        'url'     => env('MONOX_MATEX_API_BASE_URL', env('APP_URL')),
+        'api_key' => env('MONOX_MATEX_API_KEY', env('MATEX_API_KEY')),
     ],
 
     /*

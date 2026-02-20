@@ -25,7 +25,7 @@ class SyncStockToExternalSystemJob implements ShouldQueue
             return;
         }
 
-        $config = config('monox.integrations.procurement_flow');
+        $config = config('monox.matex');
         $item = $this->stockMovement->item;
 
         // 品目個別の設定をチェック
@@ -37,7 +37,7 @@ class SyncStockToExternalSystemJob implements ShouldQueue
 
         // 入庫(in)か出庫(out)かに応じてエンドポイントを切り替え
         $action = $this->stockMovement->type === 'in' ? 'stock-in' : 'stock-out';
-        $apiUrl = rtrim($config['url'], '/') . "/api/procurement/{$action}";
+        $apiUrl = rtrim($config['url'], '/') . "/api/matex/{$action}";
         $apiKey = $config['api_key'];
 
         // 外部 API が期待するデータ構造に整形
