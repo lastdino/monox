@@ -34,6 +34,8 @@ new class extends Component
 
     public float $shipmentQuantity = 0;
 
+    public string $shipmentNote = '';
+
     public ?string $shipmentNumber = null;
 
     public ?string $shippingDate = null;
@@ -129,6 +131,12 @@ new class extends Component
         $this->shipmentNumber = 'SH-'.now()->format('YmdHis');
         $this->shippingDate = now()->toDateString();
 
+        if ($type === 'order') {
+            $this->shipmentNote = SalesOrder::find($id)?->note ?? '';
+        } else {
+            $this->shipmentNote = Shipment::find($id)?->note ?? '';
+        }
+
         Flux::modal('status-modal')->show();
     }
 
@@ -196,9 +204,15 @@ new class extends Component
                 }
 
                 // Update order status
-                $order->update(['status' => 'shipped']);
+                $order->update([
+                    'status' => 'shipped',
+                    'note' => $this->shipmentNote,
+                ]);
             } else {
-                $order->update(['status' => $this->editingStatus]);
+                $order->update([
+                    'status' => $this->editingStatus,
+                    'note' => $this->shipmentNote,
+                ]);
             }
         } else {
             // It's a shipment
@@ -208,7 +222,10 @@ new class extends Component
                 $this->validate([
                     'selectedLots.0.lot_id' => ['required', 'exists:monox_lots,id'],
                 ]);
-                $shipment->update(['lot_id' => $this->selectedLots[0]['lot_id']]);
+                $shipment->update([
+                    'lot_id' => $this->selectedLots[0]['lot_id'],
+                    'note' => $this->shipmentNote,
+                ]);
 
                 // 出荷レコードを「出荷済み」にする際に在庫を減らす（元々ロットがなかった場合など）
                 StockMovement::create([
@@ -233,7 +250,10 @@ new class extends Component
                 ]);
             }
 
-            $shipment->update(['status' => $this->editingStatus]);
+            $shipment->update([
+                'status' => $this->editingStatus,
+                'note' => $this->shipmentNote,
+            ]);
 
             // If shipment is completed, update linked order status if all shipped?
             // For now, let's keep it simple.
@@ -353,6 +373,7 @@ new class extends Component
                 <flux:table.column>品目</flux:table.column>
                 <flux:table.column>日付</flux:table.column>
                 <flux:table.column>数量</flux:table.column>
+                <flux:table.column>備考</flux:table.column>
                 <flux:table.column>ステータス</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
@@ -384,6 +405,11 @@ new class extends Component
                         </flux:table.cell>
                         <flux:table.cell>{{ $order->due_date ? $order->due_date->format(config('monox.datetime.formats.date', 'Y-m-d')) : '-' }}</flux:table.cell>
                         <flux:table.cell>{{ number_format($order->quantity, 2) }}</flux:table.cell>
+                        <flux:table.cell>
+                            <div class="text-xs text-zinc-500 truncate max-w-xs" title="{{ $order->note }}">
+                                {{ $order->note ?? '-' }}
+                            </div>
+                        </flux:table.cell>
                         <flux:table.cell>
                             @can('sales-orders.status.'.$this->departmentId)
                                 <div class="cursor-pointer" wire:click="openStatusModal({{ $order->id }}, 'order', '{{ $order->status }}', {{ $order->quantity }})">
@@ -506,6 +532,8 @@ new class extends Component
                 <flux:radio value="shipped" label="出荷済み" />
                 <flux:radio value="cancelled" label="キャンセル" />
             </flux:radio.group>
+
+            <flux:textarea wire:model="shipmentNote" label="備考" rows="2" />
 
             @if($editingStatus === 'shipped')
                 <div class="p-4 bg-zinc-50 dark:bg-white/5 rounded-lg border border-zinc-200 dark:border-zinc-700 space-y-4">

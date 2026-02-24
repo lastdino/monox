@@ -186,6 +186,10 @@ new class extends Component
                         <span class="text-zinc-500">数量</span>
                         <span class="font-bold text-lg">{{ number_format($order->quantity) }} {{ $order->item?->unit }}</span>
                     </div>
+                    <div class="flex flex-col border-t pt-2">
+                        <span class="text-zinc-500">備考</span>
+                        <span class="mt-1 text-sm whitespace-pre-wrap">{{ $order->note ?? 'なし' }}</span>
+                    </div>
                 </div>
             </flux:card>
 
