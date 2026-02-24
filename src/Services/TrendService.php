@@ -47,6 +47,7 @@ class TrendService
                     'finished_at' => $record->work_finished_at,
                     'lot_number' => $record->productionOrder->lot?->lot_number,
                     'value' => $val,
+                    'count' => $group->count(),
                 ];
             })
             ->sortByDesc('finished_at')
@@ -56,6 +57,8 @@ class TrendService
 
         $labels = $values->map(fn ($v) => $v['lot_number'] ?? $v['finished_at']->format(config('monox.datetime.formats.short_datetime', 'm/d H:i')))->toArray();
         $data = $values->map(fn ($v) => (float) $v['value'])->toArray();
+        $recordIds = $values->map(fn ($v) => $v['record_id'])->toArray();
+        $counts = $values->map(fn ($v) => $v['count'])->toArray();
 
         $firstFieldId = (int) Arr::first($fieldIds);
         $field = ProductionAnnotationField::find($firstFieldId);
@@ -101,6 +104,8 @@ class TrendService
 
         return [
             'labels' => $labels,
+            'record_ids' => $recordIds,
+            'counts' => $counts,
             'datasets' => [
                 [
                     'label' => $label,

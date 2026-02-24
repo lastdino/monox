@@ -242,9 +242,10 @@ new class extends Component
                                             }
                                         }
                                     @endphp
-                                    @if ($effectiveMedia)
-                                        <flux:button href="{{ route('monox.processes.annotations', ['process' => $process->id]) }}" variant="ghost" size="sm" icon="cursor-arrow-ripple" square />
-                                    @endif
+                                    <flux:button href="{{ route('monox.processes.annotations', ['process' => $process->id]) }}"
+                                                 variant="ghost" size="sm"
+                                                 :icon="$effectiveMedia ? 'cursor-arrow-ripple' : 'list-bullet'"
+                                                 square />
                                     <flux:button wire:click="editProcess({{ $process->id }})" variant="ghost" size="sm" icon="pencil-square" square />
                                     <flux:button wire:click="removeProcess({{ $process->id }})" wire:confirm="この工程を削除しますか？" variant="ghost" size="sm" icon="trash" square />
                                 </div>

@@ -12,6 +12,8 @@ new class extends Component
 
     public $fields = [];
 
+    public string $viewMode = 'image'; // 'image' or 'list'
+
     public ?int $editingFieldId = null;
 
     // Form fields
@@ -57,7 +59,16 @@ new class extends Component
         $this->editingFieldId = null;
 
         Flux::modal('field-editor')->show();
+    }
 
+    public function addField(): void
+    {
+        $this->resetForm();
+        $this->x_percent = 0;
+        $this->y_percent = 0;
+        $this->editingFieldId = null;
+
+        Flux::modal('field-editor')->show();
     }
 
     public function editField(int $id): void
@@ -199,12 +210,23 @@ new class extends Component
     <div class="flex items-center justify-between">
         <div>
             <flux:heading size="xl">{{ $process->name }} - アノテーション設定</flux:heading>
-            <flux:subheading>画像上をドラッグして入力エリアを指定してください。クリックでも追加できます。</flux:subheading>
+            <flux:subheading>画像上をドラッグして入力エリアを指定してください。リスト形式でも編集できます。</flux:subheading>
         </div>
         <flux:button href="{{ route('monox.items.index', ['department' => $process->item->department_id]) }}" variant="ghost" icon="chevron-left">工程一覧に戻る</flux:button>
     </div>
 
-    <div class="relative inline-block w-full border rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900"
+    <div class="flex items-center justify-between">
+        <flux:radio.group wire:model="viewMode" variant="segmented">
+            <flux:radio value="image" label="画像配置" />
+            <flux:radio value="list" label="リスト編集" />
+        </flux:radio.group>
+
+        <div x-show="$wire.viewMode === 'list'">
+            <flux:button wire:click="addField" icon="plus" variant="primary">項目追加</flux:button>
+        </div>
+    </div>
+
+    <div x-show="viewMode === 'image'" class="relative inline-block w-full border rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900"
          x-data="{
             isDragging: false,
             startX: 0,
@@ -295,6 +317,29 @@ new class extends Component
                 </button>
             </div>
         @endforeach
+    </div>
+
+    <div x-show="viewMode === 'list'" class="mt-4">
+        <flux:table>
+            <flux:table.columns>
+                <flux:table.column>ラベル</flux:table.column>
+                <flux:table.column>キー</flux:table.column>
+                <flux:table.column>タイプ</flux:table.column>
+                <flux:table.column></flux:table.column>
+            </flux:table.columns>
+            <flux:table.rows>
+                @foreach($fields as $field)
+                    <flux:table.row>
+                        <flux:table.cell>{{ $field->label }}</flux:table.cell>
+                        <flux:table.cell><code>{{ $field->field_key }}</code></flux:table.cell>
+                        <flux:table.cell>{{ $field->type }}</flux:table.cell>
+                        <flux:table.cell align="end">
+                            <flux:button wire:click="editField({{ $field->id }})" variant="ghost" size="sm" icon="pencil" square />
+                        </flux:table.cell>
+                    </flux:table.row>
+                @endforeach
+            </flux:table.rows>
+        </flux:table>
     </div>
 
     <flux:modal name="field-editor" class="md:w-120">

@@ -36,6 +36,12 @@ new class extends Component
 
     public int $chartLimit = 50;
 
+    public ?int $selectedRecordId = null;
+
+    public ?int $selectedFieldId = null;
+
+    public array $distributionData = [];
+
     public function mount($department): void
     {
         if ($department instanceof \Illuminate\Database\Eloquent\Model) {
@@ -243,6 +249,16 @@ new class extends Component
         if (!empty($this->chartFieldIds)) {
             $this->dispatch('chart-data-updated', data: $this->trendChartData());
         }
+    }
+
+    public function showDistribution(int $recordId, int $fieldId): void
+    {
+        $this->selectedRecordId = $recordId;
+        $this->selectedFieldId = $fieldId;
+        $this->distributionData = \Lastdino\Monox\Services\DistributionService::buildDistributionData($recordId, $fieldId);
+
+        $this->dispatch('distribution-data-updated', data: $this->distributionData);
+        Flux::modal('distribution-modal')->show();
     }
 
     /**
@@ -532,6 +548,46 @@ new class extends Component
         </flux:card>
     </div>
 
+    <flux:modal name="distribution-modal" class="md:w-[800px]">
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <flux:heading size="lg">ヒストグラム: {{ $distributionData['field']['label'] ?? '' }}</flux:heading>
+                <div class="flex gap-2 text-sm">
+                    <span class="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">N: {{ $distributionData['stats']['count'] ?? 0 }}</span>
+                    <span class="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">Avg: {{ $distributionData['stats']['avg'] ?? '-' }}</span>
+                    <span class="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">σ: {{ $distributionData['stats']['stdDev'] ?? '-' }}</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                <div class="p-2 border rounded">
+                    <div class="text-zinc-500">Min / Max</div>
+                    <div class="font-bold">{{ $distributionData['stats']['min'] ?? '-' }} / {{ $distributionData['stats']['max'] ?? '-' }}</div>
+                </div>
+                <div class="p-2 border rounded">
+                    <div class="text-zinc-500">公差 (Min/Max)</div>
+                    <div class="font-bold">{{ $distributionData['field']['min'] ?? '-' }} / {{ $distributionData['field']['max'] ?? '-' }}</div>
+                </div>
+                <div class="p-2 border rounded">
+                    <div class="text-zinc-500">Cp</div>
+                    <div class="font-bold {{ ($distributionData['stats']['cp'] ?? 0) < 1.33 ? 'text-orange-500' : 'text-green-500' }}">
+                        {{ $distributionData['stats']['cp'] ?? '-' }}
+                    </div>
+                </div>
+                <div class="p-2 border rounded">
+                    <div class="text-zinc-500">Cpk</div>
+                    <div class="font-bold {{ ($distributionData['stats']['cpk'] ?? 0) < 1.33 ? 'text-orange-500' : 'text-green-500' }}">
+                        {{ $distributionData['stats']['cpk'] ?? '-' }}
+                    </div>
+                </div>
+            </div>
+
+            <div wire:ignore class="h-80">
+                <canvas id="distributionChart"></canvas>
+            </div>
+        </div>
+    </flux:modal>
+
     @assets
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
@@ -539,6 +595,7 @@ new class extends Component
 
    <script>
        let trendChart = null;
+       let distributionChart = null;
 
        $wire.$on('chart-data-updated', (event) => {
            const chartData = event.data;
@@ -563,7 +620,32 @@ new class extends Component
                options: {
                    responsive: true,
                    maintainAspectRatio: false,
+                   onClick: (e, elements) => {
+                       if (elements.length > 0) {
+                           const index = elements[0].index;
+                           const recordId = chartData.record_ids[index];
+                           const count = chartData.counts[index];
+
+                           // 複数項目選択時は最初の項目を対象とする（とりあえずの仕様）
+                           const fieldId = $wire.chartFieldIds[0];
+
+                           if (count > 1) {
+                               $wire.showDistribution(recordId, fieldId);
+                           } else {
+                               Flux.toast('全数データがありません（単発入力です）');
+                           }
+                       }
+                   },
                    plugins: {
+                       tooltip: {
+                           callbacks: {
+                               afterBody: (context) => {
+                                   const index = context[0].dataIndex;
+                                   const count = chartData.counts[index];
+                                   return count > 1 ? `全数データ: ${count}件 (クリックで詳細)` : '';
+                               }
+                           }
+                       },
                        annotation: {
                            annotations: {
                                ...(chartData.thresholds.max ? {
@@ -648,5 +730,86 @@ new class extends Component
                }
            });
        })
+
+       $wire.$on('distribution-data-updated', (event) => {
+           const distData = event.data;
+           const ctx = document.getElementById('distributionChart').getContext('2d');
+
+           if (distributionChart) {
+               distributionChart.destroy();
+           }
+
+           distributionChart = new Chart(ctx, {
+               type: 'bar',
+               data: {
+                   labels: distData.labels,
+                   datasets: distData.datasets
+               },
+               options: {
+                   responsive: true,
+                   maintainAspectRatio: false,
+                   plugins: {
+                       legend: { display: false },
+                       annotation: {
+                           annotations: {
+                               ...(distData.field.max ? {
+                                   maxLine: {
+                                       type: 'line',
+                                       xMin: distData.field.max,
+                                       xMax: distData.field.max,
+                                       borderColor: 'rgb(239, 68, 68)',
+                                       borderWidth: 2,
+                                       borderDash: [5, 5],
+                                       label: {
+                                           display: true,
+                                           content: '上限',
+                                           position: 'end'
+                                       }
+                                   }
+                               } : {}),
+                               ...(distData.field.min ? {
+                                   minLine: {
+                                       type: 'line',
+                                       xMin: distData.field.min,
+                                       xMax: distData.field.min,
+                                       borderColor: 'rgb(239, 68, 68)',
+                                       borderWidth: 2,
+                                       borderDash: [5, 5],
+                                       label: {
+                                           display: true,
+                                           content: '下限',
+                                           position: 'end'
+                                       }
+                                   }
+                               } : {}),
+                               ...(distData.field.target ? {
+                                   targetLine: {
+                                       type: 'line',
+                                       xMin: distData.field.target,
+                                       xMax: distData.field.target,
+                                       borderColor: 'rgb(34, 197, 94)',
+                                       borderWidth: 1,
+                                       label: {
+                                           display: true,
+                                           content: '目標',
+                                           position: 'start'
+                                       }
+                                   }
+                               } : {})
+                           }
+                       }
+                   },
+                   scales: {
+                       x: {
+                           title: { display: true, text: '測定値' }
+                       },
+                       y: {
+                           beginAtZero: true,
+                           title: { display: true, text: '頻度' }
+                       }
+                   }
+               }
+           });
+       });
    </script>
 </div>
