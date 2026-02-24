@@ -212,7 +212,7 @@ new class extends Component
             <flux:heading size="xl">{{ $process->name }} - アノテーション設定</flux:heading>
             <flux:subheading>画像上をドラッグして入力エリアを指定してください。リスト形式でも編集できます。</flux:subheading>
         </div>
-        <flux:button href="{{ route('monox.items.index', ['department' => $process->item->department_id]) }}" variant="ghost" icon="chevron-left">工程一覧に戻る</flux:button>
+        <flux:button href="{{ route('monox.items.processes', ['department' => $process->item->department_id, 'item' => $process->item->id]) }}" variant="ghost" icon="chevron-left" wire:navigate>工程管理に戻る</flux:button>
     </div>
 
     <div class="flex items-center justify-between">

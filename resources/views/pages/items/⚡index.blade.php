@@ -177,7 +177,7 @@ new class extends Component
                             <flux:menu>
                                 @can('items.manage.'. $this->departmentId)
                                     <flux:menu.item icon="document-text" wire:click="editItem({{ $item->id }}, 'bom-manager')">BOM管理</flux:menu.item>
-                                    <flux:menu.item icon="wrench-screwdriver" wire:click="editItem({{ $item->id }}, 'process-manager')">工程管理</flux:menu.item>
+                                    <flux:menu.item icon="wrench-screwdriver" href="{{ route('monox.items.processes', ['department' => $this->departmentId, 'item' => $item->id]) }}" wire:navigate>工程管理</flux:menu.item>
                                 @endcan
                                 @can('stock.manage.'. $this->departmentId)
                                         <flux:menu.item icon="archive-box" wire:click="editItem({{ $item->id }}, 'inventory-manager')">在庫管理</flux:menu.item>
@@ -198,12 +198,6 @@ new class extends Component
     <flux:modal name="bom-manager" class="md:w-160">
         @isset($activeItem)
             <livewire:monox::items.bom-manager :item="$activeItem" :key="'bom-'.($activeItem->id ?? 'new')" />
-        @endisset
-    </flux:modal>
-
-    <flux:modal name="process-manager" class="md:w-160">
-        @isset($activeItem)
-            <livewire:monox::items.process-manager :item="$activeItem" :key="'proc-'.($activeItem->id ?? 'new')" />
         @endisset
     </flux:modal>
 

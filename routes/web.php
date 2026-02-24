@@ -30,6 +30,7 @@ Route::middleware(array_merge(config('monox.routes.middleware', ['web']), ['mono
         Route::livewire('{department}/permissions', 'monox::departments.permissions')->name('monox.departments.permissions')->middleware('auth');
 
         // 設定関連
+        Route::livewire('{department}/items/{item}/processes', 'monox::items.process-manager')->name('monox.items.processes');
         Route::livewire('processes/{process}/annotations', 'monox::processes.annotations')->name('monox.processes.annotations');
 
         // メディア配信

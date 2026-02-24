@@ -31,6 +31,11 @@ new class extends Component
         $this->item = $item;
     }
 
+    public function getDepartmentProperty()
+    {
+        return $this->item->department;
+    }
+
     public function addProcess(): void
     {
         $this->validate([
@@ -163,9 +168,12 @@ new class extends Component
 ?>
 
 <div class="space-y-6">
-    <div>
-        <flux:heading size="lg">{{ $item->name }} の工程管理</flux:heading>
-        <flux:subheading>製造工程とその標準時間を登録します。</flux:subheading>
+    <div class="flex items-center justify-between">
+        <div>
+            <flux:heading size="xl">{{ $item->name }} の工程管理</flux:heading>
+            <flux:subheading>製造工程とその標準時間を登録します。</flux:subheading>
+        </div>
+        <flux:button href="{{ route('monox.items.index', ['department' => $item->department_id]) }}" variant="ghost" icon="chevron-left" wire:navigate>品目一覧に戻る</flux:button>
     </div>
 
     <div class="space-y-4">
@@ -245,7 +253,7 @@ new class extends Component
                                     <flux:button href="{{ route('monox.processes.annotations', ['process' => $process->id]) }}"
                                                  variant="ghost" size="sm"
                                                  :icon="$effectiveMedia ? 'cursor-arrow-ripple' : 'list-bullet'"
-                                                 square />
+                                                 square wire:navigate />
                                     <flux:button wire:click="editProcess({{ $process->id }})" variant="ghost" size="sm" icon="pencil-square" square />
                                     <flux:button wire:click="removeProcess({{ $process->id }})" wire:confirm="この工程を削除しますか？" variant="ghost" size="sm" icon="trash" square />
                                 </div>

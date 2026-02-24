@@ -31,7 +31,7 @@
         <flux:menu.separator />
 
         <flux:menu.item icon="cube" href="{{ route('monox.items.index', ['department' => $id]) }}" wire:navigate>
-            品目マスター
+            品目・工程
         </flux:menu.item>
 
         <flux:menu.item icon="users" href="{{ route('monox.partners.index', ['department' => $id]) }}" wire:navigate>
