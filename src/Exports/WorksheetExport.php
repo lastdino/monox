@@ -45,17 +45,19 @@ class WorksheetExport
         $sheet->setCellValue('B2', $order->item->name);
         $sheet->setCellValue('A3', 'ロット番号');
         $sheet->setCellValue('B3', $order->lot->lot_number);
+        $sheet->setCellValue('A4', '指図備考');
+        $sheet->setCellValue('B4', $order->note);
 
         if ($order->parent_order_id) {
-            $sheet->setCellValue('A4', '親ロット番号');
-            $sheet->setCellValue('B4', $order->parent->lot->lot_number);
+            $sheet->setCellValue('A5', '親ロット番号');
+            $sheet->setCellValue('B5', $order->parent->lot->lot_number);
+            $sheet->setCellValue('A6', '工程名');
+            $sheet->setCellValue('B6', $process->name);
+            $headerOffset = 2;
+        } else {
             $sheet->setCellValue('A5', '工程名');
             $sheet->setCellValue('B5', $process->name);
             $headerOffset = 1;
-        } else {
-            $sheet->setCellValue('A4', '工程名');
-            $sheet->setCellValue('B4', $process->name);
-            $headerOffset = 0;
         }
 
         // Record Data

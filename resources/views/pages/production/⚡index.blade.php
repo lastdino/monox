@@ -21,8 +21,11 @@ new class extends Component
     public ?string $lot_number = null;
 
     public float $target_quantity = 1;
-
     public string $note = '';
+
+    // Edit Order Form
+    public ?int $editingOrderId = null;
+    public string $editingNote = '';
 
     public function mount($department): void
     {
@@ -117,6 +120,41 @@ new class extends Component
 
         Flux::toast('製造指図を取り消しました。');
     }
+
+    public function editOrder(\Lastdino\Monox\Models\ProductionOrder $order): void
+    {
+        if (! auth()->user()->can('production.manage'.'.'.$this->departmentId)) {
+            Flux::toast('編集権限がありません。', variant: 'danger');
+
+            return;
+        }
+
+        $this->editingOrderId = $order->id;
+        $this->editingNote = $order->note ?? '';
+
+        Flux::modal('edit-order')->show();
+    }
+
+    public function updateOrder(): void
+    {
+        if (! auth()->user()->can('production.manage'.'.'.$this->departmentId)) {
+            Flux::toast('編集権限がありません。', variant: 'danger');
+
+            return;
+        }
+
+        $this->validate([
+            'editingNote' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $order = \Lastdino\Monox\Models\ProductionOrder::findOrFail($this->editingOrderId);
+        $order->update([
+            'note' => $this->editingNote,
+        ]);
+
+        Flux::modal('edit-order')->close();
+        Flux::toast('製造指図を更新しました。');
+    }
 };
 ?>
 
@@ -153,6 +191,7 @@ new class extends Component
             <flux:table.column>品目</flux:table.column>
             <flux:table.column>ロット</flux:table.column>
             <flux:table.column>予定数</flux:table.column>
+            <flux:table.column>備考</flux:table.column>
             <flux:table.column>作成日</flux:table.column>
             <flux:table.column></flux:table.column>
         </flux:table.columns>
@@ -196,10 +235,19 @@ new class extends Component
                     </flux:table.cell>
                     <flux:table.cell>{{ $order->lot->lot_number ?? '-' }}</flux:table.cell>
                     <flux:table.cell>{{ number_format($order->target_quantity, 2) }} {{ $order->item->unit }}</flux:table.cell>
+                    <flux:table.cell>
+                        <div class="max-w-xs truncate text-xs text-zinc-500" title="{{ $order->note }}">
+                            {{ $order->note ?: '-' }}
+                        </div>
+                    </flux:table.cell>
                     <flux:table.cell>{{ $order->created_at->format(config('monox.datetime.formats.date', 'Y-m-d')) }}</flux:table.cell>
                     <flux:table.cell align="end">
                         <flux:button href="{{ route('monox.production.travel-sheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="printer" square tooltip="トラベルシート" />
                         <flux:button href="{{ route('monox.production.worksheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="document-text" square tooltip="ワークシート" />
+
+                        @can('production.manage'. '.' . $this->departmentId)
+                            <flux:button wire:click="editOrder({{ $order->id }})" variant="ghost" size="sm" icon="pencil-square" square tooltip="編集" />
+                        @endcan
 
                         @if ($order->status === 'pending')
                             @can('production.manage'. '.' . $this->departmentId)
@@ -233,6 +281,21 @@ new class extends Component
                     <flux:button variant="ghost">キャンセル</flux:button>
                 </flux:modal.close>
                 <flux:button type="submit" variant="primary">作成</flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
+    <flux:modal name="edit-order" class="md:w-120">
+        <form wire:submit="updateOrder" class="space-y-4">
+            <flux:heading size="lg">製造指図の編集</flux:heading>
+
+            <flux:textarea wire:model="editingNote" label="備考" rows="3" />
+
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">キャンセル</flux:button>
+                </flux:modal.close>
+                <flux:button type="submit" variant="primary">更新</flux:button>
             </div>
         </form>
     </flux:modal>
