@@ -103,17 +103,26 @@ class WorksheetExport
         $fields = $process->annotationFields->sortBy('id');
 
         foreach ($fields as $field) {
-            $valueModel = $record ? $record->annotationValues()->where('field_id', $field->id)->first() : null;
+            $valueModels = $record ? $record->annotationValues()->where('field_id', $field->id)->get() : collect();
 
-            $sheet->setCellValue('A'.$row, $field->label);
-            $sheet->setCellValue('B'.$row, $valueModel?->value);
-            $sheet->setCellValue('C'.$row, ($valueModel?->note ?? '').($isInherited && $valueModel ? ' (親から継承)' : ''));
+            if ($valueModels->isEmpty()) {
+                $sheet->setCellValue('A'.$row, $field->label);
+                $row++;
 
-            if ($valueModel && $valueModel->is_within_tolerance !== null) {
-                $sheet->setCellValue('D'.$row, $valueModel->is_within_tolerance ? 'OK' : 'NG');
+                continue;
             }
 
-            $row++;
+            foreach ($valueModels as $valueModel) {
+                $sheet->setCellValue('A'.$row, $field->label);
+                $sheet->setCellValue('B'.$row, $valueModel->value);
+                $sheet->setCellValue('C'.$row, ($valueModel->note ?? '').($isInherited ? ' (親から継承)' : ''));
+
+                if ($valueModel->is_within_tolerance !== null) {
+                    $sheet->setCellValue('D'.$row, $valueModel->is_within_tolerance ? 'OK' : 'NG');
+                }
+
+                $row++;
+            }
         }
 
         // Auto size columns
