@@ -226,7 +226,8 @@ new class extends Component
         </div>
     </div>
 
-    <div x-show="viewMode === 'image'" class="relative inline-block w-full border rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900"
+
+    <div x-show="$wire.viewMode === 'image'" class="relative inline-block w-full border rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900"
          x-data="{
             isDragging: false,
             startX: 0,
@@ -319,7 +320,7 @@ new class extends Component
         @endforeach
     </div>
 
-    <div x-show="viewMode === 'list'" class="mt-4">
+    <div x-show="$wire.viewMode === 'list'" class="mt-4">
         <flux:table>
             <flux:table.columns>
                 <flux:table.column>ラベル</flux:table.column>
