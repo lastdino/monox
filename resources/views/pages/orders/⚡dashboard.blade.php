@@ -163,6 +163,16 @@ new class extends Component
             }
 
             if ($this->editingStatus === 'shipped') {
+                // すでにステータスが出荷済みで、備考だけ変更したい場合
+                if ($order->status === 'shipped') {
+                    $order->update(['note' => $this->shipmentNote]);
+
+                    Flux::modal('status-modal')->close();
+                    Flux::toast('備考を更新しました。');
+
+                    return;
+                }
+
                 $this->validate([
                     'selectedLots.*.lot_id' => ['required', 'exists:monox_lots,id'],
                     'selectedLots.*.quantity' => ['required', 'numeric', 'min:0.0001'],
@@ -217,6 +227,16 @@ new class extends Component
         } else {
             // It's a shipment
             $shipment = Shipment::findOrFail($this->editingEntryId);
+
+            // すでにステータスが出荷済みで、備考だけ変更したい場合
+            if ($this->editingStatus === 'shipped' && $shipment->status === 'shipped') {
+                $shipment->update(['note' => $this->shipmentNote]);
+
+                Flux::modal('status-modal')->close();
+                Flux::toast('備考を更新しました。');
+
+                return;
+            }
 
             if ($this->editingStatus === 'shipped' && ! $shipment->lot_id) {
                 $this->validate([
@@ -535,7 +555,16 @@ new class extends Component
 
             <flux:textarea wire:model="shipmentNote" label="備考" rows="2" />
 
-            @if($editingStatus === 'shipped')
+            @php
+                $isAlreadyShipped = false;
+                if ($editingEntryType === 'order') {
+                    $isAlreadyShipped = (SalesOrder::find($editingEntryId)?->status ?? '') === 'shipped';
+                } else {
+                    $isAlreadyShipped = (Shipment::find($editingEntryId)?->status ?? '') === 'shipped';
+                }
+            @endphp
+
+            @if($editingStatus === 'shipped' && ! $isAlreadyShipped)
                 <div class="p-4 bg-zinc-50 dark:bg-white/5 rounded-lg border border-zinc-200 dark:border-zinc-700 space-y-4">
                     <div class="flex items-center justify-between">
                         <flux:heading size="sm">出荷情報の登録</flux:heading>
@@ -594,7 +623,7 @@ new class extends Component
                     <flux:button variant="ghost">キャンセル</flux:button>
                 </flux:modal.close>
                 @php
-                    $isMismatch = $editingStatus === 'shipped' && abs(collect($selectedLots)->sum('quantity') - $shipmentQuantity) > 0.00001;
+                    $isMismatch = $editingStatus === 'shipped' && ! $isAlreadyShipped && abs(collect($selectedLots)->sum('quantity') - $shipmentQuantity) > 0.00001;
                 @endphp
                 <flux:button type="submit" variant="primary" :disabled="$isMismatch">更新</flux:button>
             </div>
