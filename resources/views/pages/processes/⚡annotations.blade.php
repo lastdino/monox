@@ -98,7 +98,7 @@ new class extends Component
         $this->validate([
             'label' => ['required', 'string', 'max:255'],
             'field_key' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'in:number,text,boolean,signature,timestamp,material,material_lot,material_quantity,input_quantity,good_quantity,defective_quantity,photo,production_lot'],
+            'type' => ['required', 'string', 'in:number,text,boolean,signature,timestamp,material,material_lot,material_quantity,input_quantity,good_quantity,defective_quantity,photo,production_lot,pass_fail'],
             'is_optional' => ['required', 'boolean'],
             'x_percent' => ['required', 'numeric', 'between:0,100'],
             'y_percent' => ['required', 'numeric', 'between:0,100'],
@@ -366,6 +366,7 @@ new class extends Component
                 <flux:select.option value="defective_quantity">不良数</flux:select.option>
                 <flux:select.option value="production_lot">製造Lot</flux:select.option>
                 <flux:select.option value="photo">写真</flux:select.option>
+                <flux:select.option value="pass_fail">合否 (合格/不合格)</flux:select.option>
             </flux:select>
 
             <flux:checkbox wire:model="is_optional" label="任意入力にする" description="未入力でも作業を終了できるようにします。" />

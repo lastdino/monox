@@ -681,6 +681,10 @@ new class extends Component
             $this->fieldValue = $this->order->lot?->lot_number ?? '';
         }
 
+        if ($field->type === 'pass_fail' && empty($this->fieldValue)) {
+            $this->fieldValue = '合格';
+        }
+
         Flux::modal('annotation-modal')->show();
     }
 
@@ -698,6 +702,10 @@ new class extends Component
         $field = ProductionAnnotationField::find($this->activeFieldId);
 
         $isWithinTolerance = true;
+        if ($field->type === 'pass_fail') {
+            $isWithinTolerance = ($this->fieldValue === '合格');
+        }
+
         if (in_array($field->type, ['number', 'input_quantity', 'good_quantity', 'defective_quantity', 'material_quantity']) && is_numeric($this->fieldValue)) {
             $val = (float) $this->fieldValue;
             if (($field->min_value !== null && $val < $field->min_value) ||
@@ -1284,6 +1292,11 @@ new class extends Component
                     </div>
                 @elseif($f->type === 'production_lot')
                     <flux:input wire:model="fieldValue" label="製造ロット" readonly />
+                @elseif($f->type === 'pass_fail')
+                    <flux:radio.group wire:model="fieldValue" label="判定">
+                        <flux:radio value="合格" label="合格" />
+                        <flux:radio value="不合格" label="不合格" />
+                    </flux:radio.group>
                 @else
                     <flux:input wire:model="fieldValue" label="入力値" />
                 @endif

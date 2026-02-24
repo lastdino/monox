@@ -120,6 +120,10 @@ class InspectionController extends Controller
 
     private function checkTolerance(ProductionAnnotationField $field, $value): bool
     {
+        if ($field->type === 'pass_fail') {
+            return $value === '合格' || $value === true || $value === 1 || $value === 'true';
+        }
+
         if (! is_numeric($value)) {
             return true;
         }
