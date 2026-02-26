@@ -173,6 +173,22 @@ new class extends Component
         Flux::toast('フィールドを削除しました。');
     }
 
+    public function updateFieldPosition(int $id, float $x, float $y, float $w, float $h): void
+    {
+        $field = ProductionAnnotationField::findOrFail($id);
+        $field->update([
+            'x_percent' => round($x, 2),
+            'y_percent' => round($y, 2),
+            'width_percent' => round($w, 2),
+            'height_percent' => round($h, 2),
+        ]);
+
+        $this->process->load('annotationFields');
+        $this->fields = $this->process->annotationFields;
+
+        Flux::toast('位置を更新しました。');
+    }
+
     private function resetForm(): void
     {
         $this->reset(['label', 'field_key', 'type', 'is_optional', 'width_percent', 'height_percent', 'target_value', 'min_value', 'max_value', 'linked_item_id', 'related_field_id', 'editingFieldId']);
@@ -305,15 +321,89 @@ new class extends Component
 
         @foreach($fields as $field)
             <div
-                class="absolute border-2 border-blue-600 bg-blue-500/20 shadow-[0_0_8px_rgba(37,99,235,0.4)] hover:bg-blue-500/40 cursor-pointer flex items-center justify-center group overflow-hidden transition-all hover:scale-105 z-10"
+                class="absolute border-2 border-blue-600 bg-blue-500/20 shadow-[0_0_8px_rgba(37,99,235,0.4)] hover:bg-blue-500/40 cursor-move flex items-center justify-center group z-10"
                 style="left: {{ $field->x_percent }}%; top: {{ $field->y_percent }}%; width: {{ $field->width_percent }}%; height: {{ $field->height_percent }}%;"
-                wire:click.stop="editField({{ $field->id }})"
+                x-data="{
+                    isAdjusting: false,
+                    type: '', // 'move' or 'resize'
+                    startX: 0, startY: 0,
+                    originalX: {{ $field->x_percent }}, originalY: {{ $field->y_percent }},
+                    originalW: {{ $field->width_percent }}, originalH: {{ $field->height_percent }},
+
+                    startAdjust(e, mode) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.isAdjusting = true;
+                        this.type = mode;
+                        const rect = $el.parentElement.getBoundingClientRect();
+                        this.startX = e.clientX;
+                        this.startY = e.clientY;
+
+                        // 最新のスタイルから現在の位置とサイズを取得して保持する
+                        this.originalX = parseFloat($el.style.left) || {{ $field->x_percent }};
+                        this.originalY = parseFloat($el.style.top) || {{ $field->y_percent }};
+                        this.originalW = parseFloat($el.style.width) || {{ $field->width_percent }};
+                        this.originalH = parseFloat($el.style.height) || {{ $field->height_percent }};
+
+                        const moveHandler = (e2) => {
+                            const deltaX = ((e2.clientX - this.startX) / rect.width) * 100;
+                            const deltaY = ((e2.clientY - this.startY) / rect.height) * 100;
+
+                            if (this.type === 'move') {
+                                let newX = Math.max(0, Math.min(100 - this.originalW, this.originalX + deltaX));
+                                let newY = Math.max(0, Math.min(100 - this.originalH, this.originalY + deltaY));
+                                $el.style.left = `${newX}%`;
+                                $el.style.top = `${newY}%`;
+                            } else if (this.type === 'resize') {
+                                let newW = Math.max(1, Math.min(100 - this.originalX, this.originalW + deltaX));
+                                let newH = Math.max(1, Math.min(100 - this.originalY, this.originalH + deltaY));
+                                $el.style.width = `${newW}%`;
+                                $el.style.height = `${newH}%`;
+                            }
+                        };
+
+                        const upHandler = (e2) => {
+                            window.removeEventListener('mousemove', moveHandler);
+                            window.removeEventListener('mouseup', upHandler);
+                            if (!this.isAdjusting) return;
+
+                            const newRect = {
+                                x: parseFloat($el.style.left),
+                                y: parseFloat($el.style.top),
+                                w: parseFloat($el.style.width),
+                                h: parseFloat($el.style.height)
+                            };
+
+                            // Check if actual movement occurred to distinguish from a simple click
+                            const hasMoved = Math.abs(e2.clientX - this.startX) > 2 || Math.abs(e2.clientY - this.startY) > 2;
+
+                            if (hasMoved) {
+                                $wire.updateFieldPosition({{ $field->id }}, newRect.x, newRect.y, newRect.w, newRect.h);
+                            }
+
+                            // Use a small timeout to ensure @click handler doesn't see isAdjusting = false too early
+                            setTimeout(() => {
+                                this.isAdjusting = false;
+                            }, 50);
+                        };
+
+                        window.addEventListener('mousemove', moveHandler);
+                        window.addEventListener('mouseup', upHandler);
+                    }
+                }"
+                @mousedown="startAdjust($event, 'move')"
+                @click.stop="if(!isAdjusting) $wire.editField({{ $field->id }})"
             >
-                <span class="leading-none font-bold text-blue-900 bg-white/80 px-1 rounded truncate max-w-full" style="font-size: clamp(8px, {{ $field->height_percent * 0.6 }}cqh, 100px);">
+                <span class="leading-none font-bold text-blue-900 bg-white/80 px-1 rounded truncate max-w-full pointer-events-none" style="font-size: clamp(8px, {{ $field->height_percent * 0.6 }}cqh, 100px);">
                     {{ $field->label }}
                 </span>
 
-                <button wire:click.stop="deleteField({{ $field->id }})" wire:confirm="削除しますか？" class="absolute -top-2 -right-2 hidden group-hover:flex bg-red-500 text-white rounded-full p-0.5 shadow transition-all hover:scale-110 z-20">
+                <div
+                    class="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize bg-blue-600 border border-white z-30"
+                    @mousedown.stop="startAdjust($event, 'resize')"
+                ></div>
+
+                <button wire:click.stop="deleteField({{ $field->id }})" wire:confirm="削除しますか？" class="absolute -top-2 -right-2 hidden group-hover:flex bg-red-500 text-white rounded-full p-0.5 shadow z-20">
                     <flux:icon icon="x-mark" variant="micro" />
                 </button>
             </div>
