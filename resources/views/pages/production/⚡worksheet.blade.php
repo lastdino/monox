@@ -1100,7 +1100,7 @@ new class extends Component
                                     @foreach($prevProc->annotationFields as $field)
                                         @php
                                             $valModel = $prevRecord?->annotationValues->where('field_id', $field->id)->first();
-                                            $hasValue = !empty($valModel?->value);
+                                            $hasValue = ($valModel?->value !== null && $valModel?->value !== '');
                                             $outOfTolerance = $hasValue && !$valModel->is_within_tolerance;
                                         @endphp
                                         <div
@@ -1129,7 +1129,7 @@ new class extends Component
                             @foreach($this->process->annotationFields as $field)
                                 @php
                                     $valModel = $this->record?->annotationValues->where('field_id', $field->id)->first();
-                                    $hasValue = !empty($valModel?->value);
+                                    $hasValue = ($valModel?->value !== null && $valModel?->value !== '');
                                     $outOfTolerance = $hasValue && !$valModel->is_within_tolerance;
                                 @endphp
                                 <div
