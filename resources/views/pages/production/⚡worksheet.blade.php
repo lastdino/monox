@@ -780,6 +780,16 @@ new class extends Component
             $this->fieldValue = (string) $this->consumedQuantity;
         }
 
+        $isPhoto = ($field->type === 'photo' && str_starts_with($this->fieldValue, 'data:image'));
+        $tempPhotoData = null;
+
+        if ($isPhoto) {
+            $tempPhotoData = $this->fieldValue;
+            // 初回保存時にエラーにならないよう、value を一時的に空にするか、
+            // または photo であることを示すマーカーにする
+            $this->fieldValue = 'processing...';
+        }
+
         $valueModel = ProductionAnnotationValue::updateOrCreate(
             [
                 'production_record_id' => $this->record->id,
@@ -794,8 +804,8 @@ new class extends Component
             ]
         );
 
-        if ($field->type === 'photo' && str_starts_with($this->fieldValue, 'data:image')) {
-            $media = $valueModel->addMediaFromBase64($this->fieldValue)
+        if ($isPhoto && $tempPhotoData) {
+            $media = $valueModel->addMediaFromBase64($tempPhotoData)
                 ->usingFileName('photo_'.now()->format('Ymd_His').'.jpg')
                 ->toMediaCollection('photo');
 
