@@ -106,11 +106,6 @@ new class extends Component
     public function items()
     {
         return Item::where('department_id', $this->departmentId)
-            ->where(function ($q) {
-                $q->selectRaw('COALESCE(SUM(quantity), 0)')
-                    ->from('monox_stock_movements')
-                    ->whereColumn('monox_items.id', 'monox_stock_movements.item_id');
-            }, '>', 0)
             ->get();
     }
 
