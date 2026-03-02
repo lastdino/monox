@@ -38,7 +38,6 @@ new class extends Component
     public function getSelectedEquipmentsProperty()
     {
         return $this->department->equipments()
-            ->orderBy('sort_order')
             ->orderBy('code')
             ->get();
     }
@@ -55,7 +54,6 @@ new class extends Component
                         ->orWhere('name', 'like', '%'.$this->search.'%');
                 });
             })
-            ->orderBy('sort_order')
             ->orderBy('code')
             ->limit(50)
             ->get();
