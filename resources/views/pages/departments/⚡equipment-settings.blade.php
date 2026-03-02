@@ -13,7 +13,10 @@ new class extends Component
 
     public function mount($department): void
     {
-        if ($department instanceof Department) {
+        // 設定からモデルクラス名を取得
+        $departmentModel = config('monox.models.department', Department::class);
+
+        if ($department instanceof $departmentModel) {
             $this->departmentId = $department->id;
         } else {
             $this->departmentId = (int) $department;
@@ -24,9 +27,12 @@ new class extends Component
         }
     }
 
-    public function getDepartmentProperty(): Department
+    public function getDepartmentProperty()
     {
-        return Department::findOrFail($this->departmentId);
+        // 設定からモデルクラス名を取得して findOrFail を実行
+        $departmentModel = config('monox.models.department', Department::class);
+
+        return $departmentModel::findOrFail($this->departmentId);
     }
 
     public function getSelectedEquipmentsProperty()
