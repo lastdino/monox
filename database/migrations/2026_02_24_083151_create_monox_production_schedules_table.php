@@ -23,7 +23,7 @@ return new class extends Migration
             $table->text('note')->nullable();
             $table->timestamps();
 
-            $table->index(['scheduled_start_at', 'scheduled_end_at']);
+            $table->index(['scheduled_start_at', 'scheduled_end_at'], 'monox_schedules_start_end_index');
         });
 
         // 既存のProductionRecordにschedule_idを追加
