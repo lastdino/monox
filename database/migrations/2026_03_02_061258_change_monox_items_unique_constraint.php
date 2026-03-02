@@ -12,9 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('monox_items', function (Blueprint $table) {
-            if (!Schema::hasColumn('monox_items', 'sync_to_procurement')) {
-                $table->boolean('sync_to_procurement')->default(false)->after('auto_inventory_update');
-            }
+            $table->dropUnique(['code']);
+            $table->unique(['department_id', 'code']);
         });
     }
 
@@ -24,7 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('monox_items', function (Blueprint $table) {
-            $table->dropColumn('sync_to_procurement');
+            $table->dropUnique(['department_id', 'code']);
+            $table->unique(['code']);
         });
     }
 };

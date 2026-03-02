@@ -4,14 +4,26 @@ namespace Lastdino\Monox\Traits;
 
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Lastdino\Monox\Models\Bom;
+use Lastdino\Monox\Models\Equipment;
 use Lastdino\Monox\Models\Item;
 use Lastdino\Monox\Models\ItemType;
 use Lastdino\Monox\Models\Lot;
 use Lastdino\Monox\Models\Partner;
 use Lastdino\Monox\Models\StockMovement;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 trait HasMonoxRelations
 {
+    public function equipments(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            config('monox.models.equipment', Equipment::class),
+            'monox_department_equipment',
+            'department_id',
+            'equipment_id'
+        );
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(Item::class, 'department_id');

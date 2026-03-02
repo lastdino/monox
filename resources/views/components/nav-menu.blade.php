@@ -20,12 +20,24 @@
             製造記録
         </flux:menu.item>
 
+        <flux:menu.item icon="calendar" href="{{ route('monox.production.scheduler', ['department' => $id]) }}" wire:navigate>
+            スケジューラー
+        </flux:menu.item>
+
         <flux:menu.item icon="clipboard-document-list" href="{{ route('monox.inventory.lot-summary', ['department' => $id]) }}" wire:navigate>
             在庫・仕掛
         </flux:menu.item>
 
         <flux:menu.item icon="shield-check" href="{{ route('monox.departments.permissions', ['department' => $id]) }}" wire:navigate>
             権限設定
+        </flux:menu.item>
+
+        <flux:menu.item icon="key" href="{{ route('monox.departments.api-tokens', ['department' => $id]) }}" wire:navigate>
+            APIトークン
+        </flux:menu.item>
+
+        <flux:menu.item icon="wrench-screwdriver" href="{{ route('monox.departments.equipment-settings', ['department' => $id]) }}" wire:navigate>
+            設備連動設定
         </flux:menu.item>
 
         <flux:menu.separator />

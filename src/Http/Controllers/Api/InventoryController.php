@@ -14,22 +14,39 @@ class InventoryController extends Controller
     {
         // 1. バリデーション
         $validated = $request->validate([
-            'sku' => 'required|exists:monox_items,code',
+            'sku' => 'required|string',
             'lot_no' => 'nullable|string',
             'qty' => 'required|numeric',
             'type' => 'required|in:in,out',
             'reason' => 'nullable|string',
         ]);
 
-        $item = Item::where('code', $validated['sku'])->firstOrFail();
+        $department = $request->attributes->get('current_department');
+        $itemQuery = Item::where('code', $validated['sku']);
+
+        if ($department) {
+            $itemQuery->where('department_id', $department->id);
+        }
+
+        $item = $itemQuery->first();
+
+        if (! $item) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Item not found in Monox.',
+            ], 404);
+        }
 
         // 2. ロットの取得または作成
         $lotId = null;
         $isNewLot = false;
         if (! empty($validated['lot_no'])) {
             $lot = Lot::firstOrCreate(
-                ['item_id' => $item->id, 'lot_number' => $validated['lot_no']],
-                ['department_id' => $item->department_id]
+                [
+                    'item_id' => $item->id,
+                    'lot_number' => $validated['lot_no'],
+                    'department_id' => $item->department_id,
+                ]
             );
             $lotId = $lot->id;
             $isNewLot = $lot->wasRecentlyCreated;
@@ -44,7 +61,7 @@ class InventoryController extends Controller
             'lot_id' => $lotId,
             'quantity' => $quantity,
             'type' => $validated['type'],
-            'reason' => ($validated['reason'] ?? null) ?: 'matex からの同期',
+            'reason' => ($validated['reason'] ?? null) ?: 'APIからの同期',
             'is_external_sync' => true,
             'moved_at' => now(),
             'department_id' => $item->department_id,

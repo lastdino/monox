@@ -60,9 +60,11 @@ return [
     |
     */
     'models' => [
-        'department' => "\\Lastdino\\Monox\\Models\\Department",
         // ユーザー独自のモデルを使用する場合:
         // 'department' => "\\App\\Models\\Department",
+        'department' => "\\Lastdino\\Monox\\Models\\Department",
+        'equipment'  => "\\Lastdino\\Monox\\Models\\Equipment",
+
     ],
 
     /*

@@ -121,6 +121,50 @@ new class extends Component
         Flux::toast('製造指図を取り消しました。');
     }
 
+    public function generateSchedules(\Lastdino\Monox\Models\ProductionOrder $order): void
+    {
+        if (! auth()->user()->can('production.manage'.'.'.$this->departmentId)) {
+            Flux::toast('スケジュールを作成する権限がありません。', variant: 'danger');
+
+            return;
+        }
+
+        // 既にスケジュールがある場合はスキップ
+        if ($order->schedules()->exists()) {
+            Flux::toast('既にスケジュールが存在します。', variant: 'warning');
+
+            return;
+        }
+
+        $processes = $order->item->processes()->orderBy('sort_order')->get();
+        if ($processes->isEmpty()) {
+            Flux::toast('工程が定義されていません。', variant: 'danger');
+
+            return;
+        }
+
+        $currentTime = now()->addHour()->startOfHour(); // 次の時間の正時から開始
+
+        foreach ($processes as $process) {
+            $durationMinutes = ($process->standard_time_minutes ?? 0) * $order->target_quantity;
+            $durationMinutes = max(60, $durationMinutes); // 最低1時間
+
+            $endTime = $currentTime->copy()->addMinutes($durationMinutes);
+
+            \Lastdino\Monox\Models\ProductionSchedule::create([
+                'production_order_id' => $order->id,
+                'process_id' => $process->id,
+                'scheduled_start_at' => $currentTime,
+                'scheduled_end_at' => $endTime,
+                'status' => 'confirmed',
+            ]);
+
+            $currentTime = $endTime->copy()->addMinutes(10); // 工程間に10分のバッファ
+        }
+
+        Flux::toast('スケジュールを自動生成しました。');
+    }
+
     public function editOrder(\Lastdino\Monox\Models\ProductionOrder $order): void
     {
         if (! auth()->user()->can('production.manage'.'.'.$this->departmentId)) {
@@ -242,6 +286,12 @@ new class extends Component
                     </flux:table.cell>
                     <flux:table.cell>{{ $order->created_at->format(config('monox.datetime.formats.date', 'Y-m-d')) }}</flux:table.cell>
                     <flux:table.cell align="end">
+                        @if($order->status === 'pending')
+                            @can('production.manage'. '.' . $this->departmentId)
+                                <flux:button wire:click="generateSchedules({{ $order->id }})" variant="ghost" size="sm" icon="calendar-days" square tooltip="スケジュール生成" />
+                            @endcan
+                        @endif
+
                         <flux:button href="{{ route('monox.production.travel-sheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="printer" square tooltip="トラベルシート" />
                         <flux:button href="{{ route('monox.production.worksheet', ['department' => $departmentId, 'order' => $order->id]) }}" variant="ghost" size="sm" icon="document-text" square tooltip="ワークシート" />
 

@@ -17,7 +17,9 @@ class ProductionRecord extends Model
     protected $fillable = [
         'production_order_id',
         'process_id',
+        'production_schedule_id',
         'worker_id',
+        'equipment_id',
         'status',
         'input_quantity',
         'good_quantity',
@@ -52,9 +54,19 @@ class ProductionRecord extends Model
         return $this->belongsTo(Process::class);
     }
 
+    public function schedule(): BelongsTo
+    {
+        return $this->belongsTo(ProductionSchedule::class, 'production_schedule_id');
+    }
+
     public function worker(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function equipment(): BelongsTo
+    {
+        return $this->belongsTo(config('monox.models.equipment', Equipment::class));
     }
 
     public function annotationValues(): HasMany

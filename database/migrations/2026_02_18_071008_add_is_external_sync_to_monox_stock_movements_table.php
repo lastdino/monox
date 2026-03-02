@@ -12,7 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('monox_stock_movements', function (Blueprint $table) {
-            $table->boolean('is_external_sync')->default(false)->after('reason');
+            if (!Schema::hasColumn('monox_stock_movements', 'is_external_sync')) {
+                $table->boolean('is_external_sync')->default(false)->after('reason');
+            }
+
         });
     }
 

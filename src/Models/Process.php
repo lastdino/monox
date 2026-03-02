@@ -5,6 +5,7 @@ namespace Lastdino\Monox\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -20,6 +21,7 @@ class Process extends Model implements HasMedia
         'sort_order',
         'description',
         'standard_time_minutes',
+        'standard_setup_time_minutes',
         'work_in_process_unit_price',
         'template_image_path',
         'share_template_with_previous',
@@ -28,6 +30,7 @@ class Process extends Model implements HasMedia
     protected $casts = [
         'sort_order' => 'integer',
         'standard_time_minutes' => 'float',
+        'standard_setup_time_minutes' => 'float',
         'work_in_process_unit_price' => 'float',
         'share_template_with_previous' => 'boolean',
     ];
@@ -35,6 +38,16 @@ class Process extends Model implements HasMedia
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function equipments(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            config('monox.models.equipment', Equipment::class),
+            'monox_process_equipment',
+            'process_id',
+            'equipment_id'
+        )->withTimestamps();
     }
 
     public function annotationFields(): \Illuminate\Database\Eloquent\Relations\HasMany

@@ -20,6 +20,7 @@ Route::middleware(array_merge(config('monox.routes.middleware', ['web']), ['mono
 
         // 製造記録関連
         Route::livewire('{department}/production', 'monox::production.index')->name('monox.production.index');
+        Route::livewire('{department}/production/scheduler', 'monox::production.scheduler')->name('monox.production.scheduler');
         Route::livewire('{department}/production/{order}/worksheet', 'monox::production.worksheet')->name('monox.production.worksheet');
         Route::livewire('{department}/production/{order}/travel-sheet', 'monox::production.travel-sheet')->name('monox.production.travel-sheet');
 
@@ -28,6 +29,8 @@ Route::middleware(array_merge(config('monox.routes.middleware', ['web']), ['mono
 
         // 権限設定
         Route::livewire('{department}/permissions', 'monox::departments.permissions')->name('monox.departments.permissions')->middleware('auth');
+        Route::livewire('{department}/api-tokens', 'monox::departments.api-tokens')->name('monox.departments.api-tokens')->middleware('auth');
+        Route::livewire('{department}/equipment-settings', 'monox::departments.equipment-settings')->name('monox.departments.equipment-settings')->middleware('auth');
 
         // 設定関連
         Route::livewire('{department}/items/{item}/processes', 'monox::items.process-manager')->name('monox.items.processes');

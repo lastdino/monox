@@ -145,4 +145,9 @@ class ProductionOrder extends Model
     {
         return $this->hasMany(ProductionRecord::class);
     }
+
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(ProductionSchedule::class);
+    }
 }

@@ -26,10 +26,33 @@ class InspectionController extends Controller
             'inspections.*.note' => 'nullable|string',
         ]);
 
-        $lot = Lot::where('lot_number', $validated['lot_number'])->firstOrFail();
+        $department = $request->attributes->get('current_department');
+
+        $lotQuery = Lot::query()->where('lot_number', $validated['lot_number']);
+        if ($department) {
+            $lotQuery->where('department_id', $department->id);
+        }
+        $lot = $lotQuery->first();
+
+        if (! $lot) {
+            $message = $department ? 'Lot not found in your department.' : 'Lot not found in Monox.';
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $message,
+            ], 404);
+        }
+
         $process = Process::where('item_id', $lot->item_id)
             ->where('name', $validated['process_name'])
-            ->firstOrFail();
+            ->first();
+
+        if (! $process) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Process not found for this item.',
+            ], 404);
+        }
 
         // 対象工程のアノテーション項目を取得 (field_key をキーにしたマップ)
         $fields = ProductionAnnotationField::where('process_id', $process->id)
@@ -37,7 +60,14 @@ class InspectionController extends Controller
             ->keyBy('field_key');
 
         // 製造指図の取得
-        $productionOrder = ProductionOrder::where('lot_id', $lot->id)->firstOrFail();
+        $productionOrder = ProductionOrder::where('lot_id', $lot->id)->first();
+
+        if (! $productionOrder) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Production order not found for this lot.',
+            ], 404);
+        }
 
         // 製造実績の取得
         $productionRecord = ProductionRecord::where('production_order_id', $productionOrder->id)

@@ -56,7 +56,7 @@ new class extends Component
         $typeValues = collect($types)->pluck('value')->implode(',');
 
         return [
-            'code' => ['required', 'string', 'unique:monox_items,code'],
+            'code' => ['required', 'string', \Illuminate\Validation\Rule::unique('monox_items', 'code')->where('department_id', $this->departmentId)],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:'.$typeValues],
             'unit' => ['required', 'string', 'max:50'],

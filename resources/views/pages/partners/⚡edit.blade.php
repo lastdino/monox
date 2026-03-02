@@ -41,7 +41,7 @@ new class extends Component
     protected function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'unique:monox_partners,code,'.$this->partner?->id],
+            'code' => ['required', 'string', \Illuminate\Validation\Rule::unique('monox_partners', 'code')->where('department_id', $this->partner?->department_id)->ignore($this->partner?->id)],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:supplier,customer,both'],
             'email' => ['nullable', 'email', 'max:255'],

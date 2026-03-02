@@ -4,6 +4,7 @@ namespace Lastdino\Monox\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Lastdino\Monox\Models\Department;
 use Symfony\Component\HttpFoundation\Response;
 
 class VerifyApiKey
@@ -17,18 +18,34 @@ class VerifyApiKey
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $apiKey = config('monox.api_key');
+        $apiKey = $request->header('X-API-KEY');
 
         if (empty($apiKey)) {
-            return $next($request);
-        }
-
-        if ($request->header('X-API-KEY') !== $apiKey) {
             return response()->json([
-                'message' => 'Unauthorized. Invalid API Key.',
+                'message' => 'API Key is required.',
             ], 401);
         }
 
-        return $next($request);
+        // 部門のトークンを確認
+        $departmentClass = config('monox.models.department', Department::class);
+        $department = $departmentClass::where('api_token', $apiKey)->first();
+
+        if ($department) {
+            $request->attributes->set('current_department', $department);
+
+            return $next($request);
+        }
+
+        // 互換性のため、グローバルなAPIキーも確認
+        $globalKey = config('monox.api_key');
+        if (! empty($globalKey) && $apiKey === $globalKey) {
+            $request->attributes->set('is_global_api', true);
+
+            return $next($request);
+        }
+
+        return response()->json([
+            'message' => 'Unauthorized. Invalid API Key.',
+        ], 401);
     }
 }

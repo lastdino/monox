@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Lastdino\Monox\Models\Item;
 use Lastdino\Monox\Models\Process;
+use Lastdino\Monox\Models\Equipment;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -30,6 +31,7 @@ class ProcessTest extends TestCase
         // Add a process
         Livewire::test('monox::items.process-manager', ['item' => $item])
             ->set('name', 'Cutting')
+            ->set('standard_setup_time_minutes', 10.0)
             ->set('standard_time_minutes', 15.5)
             ->set('description', 'Cut the material')
             ->call('addProcess')
@@ -39,6 +41,7 @@ class ProcessTest extends TestCase
         $this->assertDatabaseHas('monox_processes', [
             'item_id' => $item->id,
             'name' => 'Cutting',
+            'standard_setup_time_minutes' => 10.0,
             'standard_time_minutes' => 15.5,
         ]);
 
@@ -48,13 +51,16 @@ class ProcessTest extends TestCase
         Livewire::test('monox::items.process-manager', ['item' => $item])
             ->call('editProcess', $process->id)
             ->assertSet('name', 'Cutting')
+            ->assertSet('standard_setup_time_minutes', 10.0)
             ->set('name', 'Final Cutting')
+            ->set('standard_setup_time_minutes', 5.0)
             ->call('updateProcess')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('monox_processes', [
             'id' => $process->id,
             'name' => 'Final Cutting',
+            'standard_setup_time_minutes' => 5.0,
         ]);
 
         // Add another process to test sorting
@@ -76,5 +82,56 @@ class ProcessTest extends TestCase
             ->call('removeProcess', $process->id);
 
         $this->assertDatabaseMissing('monox_processes', ['id' => $process->id]);
+    }
+
+    public function test_it_can_associate_equipment_with_processes()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $dept = \Lastdino\Monox\Models\Department::create(['code' => 'D_PROC', 'name' => 'Dept Proc']);
+        $item = Item::create([
+            'code' => 'TEST-EQ-001',
+            'name' => 'Test Item',
+            'type' => 'part',
+            'unit' => 'pcs',
+            'department_id' => $dept->id,
+        ]);
+
+        $equipment1 = Equipment::create(['code' => 'EQ1', 'name' => 'Equipment 1']);
+        $equipment2 = Equipment::create(['code' => 'EQ2', 'name' => 'Equipment 2']);
+        $equipmentOther = Equipment::create(['code' => 'EQ-OTHER', 'name' => 'Other Equipment']);
+
+        // 部門に設備を紐付け（monox_department_equipment）
+        $dept->equipments()->attach([$equipment1->id, $equipment2->id]);
+
+        // 1. 設備を紐付けて工程を追加
+        config(['monox.models.equipment' => Equipment::class]);
+        Livewire::test('monox::items.process-manager', ['item' => $item])
+            ->set('name', 'Pressing')
+            ->set('selectedEquipments', [(string)$equipment1->id, (string)$equipment2->id])
+            ->call('addProcess')
+            ->assertHasNoErrors();
+
+        $process = Process::where('name', 'Pressing')->first();
+        $this->assertCount(2, $process->equipments);
+        $this->assertTrue($process->equipments->contains($equipment1));
+
+        // 3. 編集時に紐付けが読み込まれることを確認
+        Livewire::test('monox::items.process-manager', ['item' => $item])
+            ->call('editProcess', $process->id)
+            ->assertSet('selectedEquipments', [(string)$equipment1->id, (string)$equipment2->id]);
+
+        // 4. 紐付けを更新
+        Livewire::test('monox::items.process-manager', ['item' => $item])
+            ->call('editProcess', $process->id)
+            ->set('selectedEquipments', [(string)$equipment1->id])
+            ->call('updateProcess')
+            ->assertHasNoErrors();
+
+        $process = $process->fresh();
+        $this->assertCount(1, $process->equipments);
+        $this->assertTrue($process->equipments->contains($equipment1));
+        $this->assertFalse($process->equipments->contains($equipment2));
     }
 }

@@ -26,6 +26,7 @@ new class extends Component
         'production.download' => ['label' => '製造実績DL', 'icon' => 'arrow-down-tray'],
         'stock.manage' => ['label' => '在庫管理', 'icon' => 'archive-box'],
         'stock.download' => ['label' => '在庫データDL', 'icon' => 'arrow-down-tray'],
+        'api-tokens.manage' => ['label' => 'APIトークン管理', 'icon' => 'key'],
         'departments.permissions' => ['label' => '権限設定', 'icon' => 'shield-check'],
     ];
 

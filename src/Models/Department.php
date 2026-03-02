@@ -17,6 +17,7 @@ class Department extends Model
         'code',
         'name',
         'description',
+        'api_token',
     ];
 
 }
