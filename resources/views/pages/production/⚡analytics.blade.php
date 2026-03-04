@@ -797,6 +797,8 @@ new class extends Component
            const maxIdx = getXIndex(distData.field.max);
            const minIdx = getXIndex(distData.field.min);
            const targetIdx = getXIndex(distData.field.target);
+           const uclIdx = getXIndex(distData.stats.ucl);
+           const lclIdx = getXIndex(distData.stats.lcl);
 
            distributionChart = new Chart(ctx, {
                type: 'bar',
@@ -852,6 +854,38 @@ new class extends Component
                                            display: true,
                                            content: '目標: ' + distData.field.target,
                                            position: 'start'
+                                       }
+                                   }
+                               } : {}),
+                               ...(uclIdx !== null ? {
+                                   uclLine: {
+                                       type: 'line',
+                                       xMin: uclIdx,
+                                       xMax: uclIdx,
+                                       borderColor: 'rgb(168, 85, 247)',
+                                       borderWidth: 1.5,
+                                       borderDash: [2, 2],
+                                       label: {
+                                           display: true,
+                                           content: 'UCL: ' + distData.stats.ucl,
+                                           position: 'start',
+                                           backgroundColor: 'rgba(168, 85, 247, 0.8)'
+                                       }
+                                   }
+                               } : {}),
+                               ...(lclIdx !== null ? {
+                                   lclLine: {
+                                       type: 'line',
+                                       xMin: lclIdx,
+                                       xMax: lclIdx,
+                                       borderColor: 'rgb(168, 85, 247)',
+                                       borderWidth: 1.5,
+                                       borderDash: [2, 2],
+                                       label: {
+                                           display: true,
+                                           content: 'LCL: ' + distData.stats.lcl,
+                                           position: 'start',
+                                           backgroundColor: 'rgba(168, 85, 247, 0.8)'
                                        }
                                    }
                                } : {})

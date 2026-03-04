@@ -82,6 +82,9 @@ class TrendService
             $stdDev = sqrt($variance);
             $stats['stdDev'] = round($stdDev, 3);
 
+            $ucl = round($avg + 3 * $stdDev, 3);
+            $lcl = round($avg - 3 * $stdDev, 3);
+
             if ($stdDev > 0) {
                 $lsl = $field?->min_value;
                 $usl = $field?->max_value;

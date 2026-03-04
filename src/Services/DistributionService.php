@@ -48,6 +48,8 @@ class DistributionService
             'max' => round($dataMax, 4),
             'avg' => round($avg, 4),
             'stdDev' => null,
+            'ucl' => null,
+            'lcl' => null,
             'cp' => null,
             'cpk' => null,
         ];
@@ -57,6 +59,9 @@ class DistributionService
             $variance = $values->map(fn ($x) => ($x - $avg) ** 2)->sum() / ($count - 1);
             $stdDev = sqrt($variance);
             $stats['stdDev'] = round($stdDev, 4);
+
+            $stats['ucl'] = round($avg + 3 * $stdDev, 4);
+            $stats['lcl'] = round($avg - 3 * $stdDev, 4);
 
             if ($stdDev > 0) {
                 $lsl = $field->min_value;
