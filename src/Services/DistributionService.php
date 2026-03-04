@@ -10,7 +10,7 @@ class DistributionService
     /**
      * Build histogram data for a specific production record and annotation field.
      */
-    public static function buildDistributionData(int $productionRecordId, int $fieldId, int $bins = 10): array
+    public static function buildDistributionData(int $productionRecordId, int $fieldId, ?int $bins = null, ?float $min = null, ?float $max = null): array
     {
         $field = ProductionAnnotationField::findOrFail($fieldId);
         $values = ProductionAnnotationValue::where('production_record_id', $productionRecordId)
@@ -28,15 +28,24 @@ class DistributionService
             ];
         }
 
-        $min = $values->min();
-        $max = $values->max();
+        $dataMin = $values->min();
+        $dataMax = $values->max();
         $count = $values->count();
         $avg = $values->avg();
 
+        // Use Sturges' formula if bins is not provided: k = 1 + log2(n)
+        if ($bins === null) {
+            $bins = (int) ceil(1 + log($count, 2));
+        }
+
+        // Default min/max: Use field spec limits if available, otherwise data limits
+        $min = $min ?? $field->min_value ?? $dataMin;
+        $max = $max ?? $field->max_value ?? $dataMax;
+
         $stats = [
             'count' => $count,
-            'min' => round($min, 4),
-            'max' => round($max, 4),
+            'min' => round($dataMin, 4),
+            'max' => round($dataMax, 4),
             'avg' => round($avg, 4),
             'stdDev' => null,
             'cp' => null,
@@ -111,6 +120,11 @@ class DistributionService
                 'min' => $field->min_value,
                 'max' => $field->max_value,
                 'target' => $field->target_value,
+            ],
+            'range' => [
+                'min' => $min,
+                'max' => $max,
+                'bins' => $bins,
             ],
         ];
     }

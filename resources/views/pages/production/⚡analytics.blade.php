@@ -40,6 +40,12 @@ new class extends Component
 
     public ?int $selectedFieldId = null;
 
+    public ?int $bins = null;
+
+    public ?float $minRange = null;
+
+    public ?float $maxRange = null;
+
     public array $distributionData = [];
 
     public function mount($department): void
@@ -255,10 +261,32 @@ new class extends Component
     {
         $this->selectedRecordId = $recordId;
         $this->selectedFieldId = $fieldId;
+
         $this->distributionData = \Lastdino\Monox\Services\DistributionService::buildDistributionData($recordId, $fieldId);
+
+        $this->bins = $this->distributionData['range']['bins'];
+        $this->minRange = $this->distributionData['range']['min'];
+        $this->maxRange = $this->distributionData['range']['max'];
 
         $this->dispatch('distribution-data-updated', data: $this->distributionData);
         Flux::modal('distribution-modal')->show();
+    }
+
+    public function refreshDistribution(): void
+    {
+        if (!$this->selectedRecordId || !$this->selectedFieldId) {
+            return;
+        }
+
+        $this->distributionData = \Lastdino\Monox\Services\DistributionService::buildDistributionData(
+            $this->selectedRecordId,
+            $this->selectedFieldId,
+            $this->bins,
+            $this->minRange,
+            $this->maxRange
+        );
+
+        $this->dispatch('distribution-data-updated', data: $this->distributionData);
     }
 
     /**
@@ -561,11 +589,11 @@ new class extends Component
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                 <div class="p-2 border rounded">
-                    <div class="text-zinc-500">Min / Max</div>
+                    <div class="text-zinc-500">Min / Max (データ)</div>
                     <div class="font-bold">{{ $distributionData['stats']['min'] ?? '-' }} / {{ $distributionData['stats']['max'] ?? '-' }}</div>
                 </div>
                 <div class="p-2 border rounded">
-                    <div class="text-zinc-500">公差 (Min/Max)</div>
+                    <div class="text-zinc-500">規格 (Min/Max)</div>
                     <div class="font-bold">{{ $distributionData['field']['min'] ?? '-' }} / {{ $distributionData['field']['max'] ?? '-' }}</div>
                 </div>
                 <div class="p-2 border rounded">
@@ -579,6 +607,14 @@ new class extends Component
                     <div class="font-bold {{ ($distributionData['stats']['cpk'] ?? 0) < 1.33 ? 'text-orange-500' : 'text-green-500' }}">
                         {{ $distributionData['stats']['cpk'] ?? '-' }}
                     </div>
+                </div>
+            </div>
+
+            <div class="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                <div class="grid grid-cols-3 gap-4">
+                    <flux:input wire:model.lazy="bins" wire:change="refreshDistribution" type="number" label="階級数" size="sm" />
+                    <flux:input wire:model.lazy="minRange" wire:change="refreshDistribution" type="number" step="any" label="最小値" size="sm" />
+                    <flux:input wire:model.lazy="maxRange" wire:change="refreshDistribution" type="number" step="any" label="最大値" size="sm" />
                 </div>
             </div>
 
@@ -735,9 +771,32 @@ new class extends Component
            const distData = event.data;
            const ctx = document.getElementById('distributionChart').getContext('2d');
 
+           // X軸（カテゴリ軸）における測定値のインデックスを計算する関数
+           const getXIndex = (value) => {
+               if (value === null || value === undefined) return null;
+               const min = distData.range.min;
+               const max = distData.range.max;
+               const bins = distData.range.bins;
+
+               if (max === min) return 0;
+
+               // 階級の幅
+               const binWidth = (max - min) / bins;
+               // 測定値が最小値からどれくらい離れているかを階級幅で割る
+               // 0番目のビンの中心がインデックス0に相当するので、中心からのオフセットを考慮
+               // 各ビンの中心は min + (i + 0.5) * binWidth
+               // したがって、値 v に対応するインデックス i は: v = min + (i + 0.5) * binWidth
+               // i = (v - min) / binWidth - 0.5
+               return ((value - min) / binWidth) - 0.5;
+           };
+
            if (distributionChart) {
                distributionChart.destroy();
            }
+
+           const maxIdx = getXIndex(distData.field.max);
+           const minIdx = getXIndex(distData.field.min);
+           const targetIdx = getXIndex(distData.field.target);
 
            distributionChart = new Chart(ctx, {
                type: 'bar',
@@ -752,46 +811,46 @@ new class extends Component
                        legend: { display: false },
                        annotation: {
                            annotations: {
-                               ...(distData.field.max ? {
+                               ...(maxIdx !== null ? {
                                    maxLine: {
                                        type: 'line',
-                                       xMin: distData.field.max,
-                                       xMax: distData.field.max,
+                                       xMin: maxIdx,
+                                       xMax: maxIdx,
                                        borderColor: 'rgb(239, 68, 68)',
                                        borderWidth: 2,
                                        borderDash: [5, 5],
                                        label: {
                                            display: true,
-                                           content: '上限',
+                                           content: '上限: ' + distData.field.max,
                                            position: 'end'
                                        }
                                    }
                                } : {}),
-                               ...(distData.field.min ? {
+                               ...(minIdx !== null ? {
                                    minLine: {
                                        type: 'line',
-                                       xMin: distData.field.min,
-                                       xMax: distData.field.min,
+                                       xMin: minIdx,
+                                       xMax: minIdx,
                                        borderColor: 'rgb(239, 68, 68)',
                                        borderWidth: 2,
                                        borderDash: [5, 5],
                                        label: {
                                            display: true,
-                                           content: '下限',
+                                           content: '下限: ' + distData.field.min,
                                            position: 'end'
                                        }
                                    }
                                } : {}),
-                               ...(distData.field.target ? {
+                               ...(targetIdx !== null ? {
                                    targetLine: {
                                        type: 'line',
-                                       xMin: distData.field.target,
-                                       xMax: distData.field.target,
+                                       xMin: targetIdx,
+                                       xMax: targetIdx,
                                        borderColor: 'rgb(34, 197, 94)',
                                        borderWidth: 1,
                                        label: {
                                            display: true,
-                                           content: '目標',
+                                           content: '目標: ' + distData.field.target,
                                            position: 'start'
                                        }
                                    }
