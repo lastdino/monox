@@ -3,6 +3,7 @@
 use Flux\Flux;
 use Lastdino\Monox\Models\Item;
 use Lastdino\Monox\Models\Process;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -44,10 +45,14 @@ new class extends Component
             return collect();
         }
 
-        return $this->department->equipments()
-            ->orderBy('sort_order')
-            ->orderBy('code')
-            ->get();
+        $query = $this->department->equipments();
+        $model = $query->getModel();
+
+        if (Schema::hasColumn($model->getTable(), 'sort_order')) {
+            $query->orderBy('sort_order');
+        }
+
+        return $query->orderBy('code')->get();
     }
 
     public function addProcess(): void
