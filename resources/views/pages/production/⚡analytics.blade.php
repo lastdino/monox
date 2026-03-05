@@ -1,11 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
-use Lastdino\Monox\Models\Department;
 use Lastdino\Monox\Models\Item;
 use Lastdino\Monox\Models\Process;
 use Lastdino\Monox\Models\ProductionAnnotationField;
-use Lastdino\Monox\Models\ProductionAnnotationValue;
 use Lastdino\Monox\Models\ProductionOrder;
 use Lastdino\Monox\Models\ProductionRecord;
 use Lastdino\Monox\Models\SalesOrder;
@@ -186,7 +184,8 @@ new class extends Component
             $this->chartFieldIds,
             $this->chartProcessId,
             $this->calcMode,
-            $this->chartLimit
+            $this->chartLimit,
+            $this->showSpcLimits
         );
     }
 
@@ -248,11 +247,15 @@ new class extends Component
     public function updatedShowSpcLimits()
     {
         $this->dispatch('chart-data-updated', data: $this->trendChartData());
+
+        if ($this->selectedRecordId && $this->selectedFieldId) {
+            $this->refreshDistribution();
+        }
     }
 
     public function updatedChartLimit()
     {
-        if (!empty($this->chartFieldIds)) {
+        if (! empty($this->chartFieldIds)) {
             $this->dispatch('chart-data-updated', data: $this->trendChartData());
         }
     }
@@ -262,7 +265,14 @@ new class extends Component
         $this->selectedRecordId = $recordId;
         $this->selectedFieldId = $fieldId;
 
-        $this->distributionData = \Lastdino\Monox\Services\DistributionService::buildDistributionData($recordId, $fieldId);
+        $this->distributionData = \Lastdino\Monox\Services\DistributionService::buildDistributionData(
+            $recordId,
+            $fieldId,
+            null,
+            null,
+            null,
+            $this->showSpcLimits
+        );
 
         $this->bins = $this->distributionData['range']['bins'];
         $this->minRange = $this->distributionData['range']['min'];
@@ -274,7 +284,7 @@ new class extends Component
 
     public function refreshDistribution(): void
     {
-        if (!$this->selectedRecordId || !$this->selectedFieldId) {
+        if (! $this->selectedRecordId || ! $this->selectedFieldId) {
             return;
         }
 
@@ -283,7 +293,8 @@ new class extends Component
             $this->selectedFieldId,
             $this->bins,
             $this->minRange,
-            $this->maxRange
+            $this->maxRange,
+            $this->showSpcLimits
         );
 
         $this->dispatch('distribution-data-updated', data: $this->distributionData);

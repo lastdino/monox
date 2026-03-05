@@ -12,7 +12,7 @@ class TrendService
      * Build trend chart data for given annotation field IDs and optional process filter.
      * Supports numeric fields and material usage fields (material, material_quantity).
      */
-    public static function buildTrendData(array $fieldIds, ?int $processId, string $calcMode, int $limit): array
+    public static function buildTrendData(array $fieldIds, ?int $processId, string $calcMode, int $limit, bool $showSpcLimits = true): array
     {
         if (empty($fieldIds)) {
             return [];
@@ -82,8 +82,10 @@ class TrendService
             $stdDev = sqrt($variance);
             $stats['stdDev'] = round($stdDev, 3);
 
-            $ucl = round($avg + 3 * $stdDev, 3);
-            $lcl = round($avg - 3 * $stdDev, 3);
+            if ($showSpcLimits) {
+                $ucl = round($avg + 3 * $stdDev, 3);
+                $lcl = round($avg - 3 * $stdDev, 3);
+            }
 
             if ($stdDev > 0) {
                 $lsl = $field?->min_value;

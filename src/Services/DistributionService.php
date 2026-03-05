@@ -10,7 +10,7 @@ class DistributionService
     /**
      * Build histogram data for a specific production record and annotation field.
      */
-    public static function buildDistributionData(int $productionRecordId, int $fieldId, ?int $bins = null, ?float $min = null, ?float $max = null): array
+    public static function buildDistributionData(int $productionRecordId, int $fieldId, ?int $bins = null, ?float $min = null, ?float $max = null, bool $showSpcLimits = true): array
     {
         $field = ProductionAnnotationField::findOrFail($fieldId);
         $values = ProductionAnnotationValue::where('production_record_id', $productionRecordId)
@@ -60,8 +60,10 @@ class DistributionService
             $stdDev = sqrt($variance);
             $stats['stdDev'] = round($stdDev, 4);
 
-            $stats['ucl'] = round($avg + 3 * $stdDev, 4);
-            $stats['lcl'] = round($avg - 3 * $stdDev, 4);
+            if ($showSpcLimits) {
+                $stats['ucl'] = round($avg + 3 * $stdDev, 4);
+                $stats['lcl'] = round($avg - 3 * $stdDev, 4);
+            }
 
             if ($stdDev > 0) {
                 $lsl = $field->min_value;
