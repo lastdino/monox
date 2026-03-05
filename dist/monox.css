@@ -1,1 +1,17 @@
 @source "../resources";
+
+
+.choices__list--dropdown .choices__item--selectable.is-highlighted {
+    /* Tailwindの zinc-100 を変数に割り当てる */
+    background-color: theme('colors.zinc.100') !important;
+}
+
+/* ダークモード対応 */
+.dark .choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background-color: theme('colors.zinc.700') !important;
+}
+
+.choices-input-custom {
+    /* --placeholder-length が指定されていればそれを使用し、なければ 10ch をデフォルトにする */
+    min-width: var(--placeholder-length, 10ch) !important;
+}
