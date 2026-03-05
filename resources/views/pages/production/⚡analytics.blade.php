@@ -121,6 +121,9 @@ new class extends Component
         }
 
         $currentStock = $item->current_stock;
+        $wipQuantity = ProductionOrder::where('item_id', $itemId)
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->sum('target_quantity');
 
         // すでに不足計算に含めているか（再帰の無限ループ防止と集計のため）
         // ただし、BOM階層を表示したい場合はキーを工夫する必要がある
@@ -133,6 +136,7 @@ new class extends Component
                 'code' => $item->code,
                 'required' => 0,
                 'stock' => $currentStock,
+                'wip' => $wipQuantity,
                 'alert_quantity' => $item->inventory_alert_quantity ?? 0,
                 'level' => $level,
                 'parent' => $parentName,
@@ -142,7 +146,7 @@ new class extends Component
         $shortages[$key]['required'] += $requiredQty;
 
         // 不足分がある場合、BOMを展開
-        $shortageQty = max(0, $shortages[$key]['required'] - $currentStock);
+        $shortageQty = max(0, $shortages[$key]['required'] - $currentStock - $wipQuantity);
 
         if ($shortageQty > 0) {
             $components = $item->components; // BelongsToMany
@@ -418,13 +422,14 @@ new class extends Component
                     <flux:table.column>品目</flux:table.column>
                     <flux:table.column>必要数</flux:table.column>
                     <flux:table.column>現在庫</flux:table.column>
+                    <flux:table.column>仕掛</flux:table.column>
                     <flux:table.column>アラート数</flux:table.column>
                     <flux:table.column>不足 / 警告</flux:table.column>
                 </flux:table.columns>
                 <flux:table.rows>
                     @foreach($this->stockShortages() as $item)
                         @php
-                            $isShortage = $item['required'] > $item['stock'];
+                            $isShortage = $item['required'] > ($item['stock'] + $item['wip']);
                             $isAlert = $item['stock'] < $item['alert_quantity'];
                         @endphp
                         @if($isShortage || $isAlert)
@@ -447,10 +452,11 @@ new class extends Component
                                 </flux:table.cell>
                                 <flux:table.cell>{{ number_format($item['required'], 2) }}</flux:table.cell>
                                 <flux:table.cell>{{ number_format($item['stock'], 2) }}</flux:table.cell>
+                                <flux:table.cell>{{ number_format($item['wip'], 2) }}</flux:table.cell>
                                 <flux:table.cell>{{ number_format($item['alert_quantity'], 2) }}</flux:table.cell>
                                 <flux:table.cell>
                                     @if($isShortage)
-                                        <flux:badge color="orange" size="sm" title="受注に対する不足数">不足: {{ number_format($item['required'] - $item['stock'], 2) }}</flux:badge>
+                                        <flux:badge color="orange" size="sm" title="受注に対する不足数">不足: {{ number_format($item['required'] - ($item['stock'] + $item['wip']), 2) }}</flux:badge>
                                     @endif
                                     @if($isAlert)
                                         <flux:badge color="red" size="sm" title="在庫アラート数を下回っています">警告: 在庫少</flux:badge>

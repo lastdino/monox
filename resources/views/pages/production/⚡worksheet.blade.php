@@ -657,6 +657,11 @@ new class extends Component
             ->first();
 
         $this->fieldValue = $valueModel->value ?? '';
+
+        if ($field->type === 'boolean') {
+            $this->fieldValue = (bool) $this->fieldValue;
+        }
+
         $this->fieldNote = $valueModel->note ?? '';
         $this->selectedLotId = $valueModel->lot_id ?? null;
         $this->consumedQuantity = $valueModel->quantity ?? 0;
