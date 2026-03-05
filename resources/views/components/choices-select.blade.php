@@ -60,29 +60,25 @@ new class extends Component
 @script
 <script>
     Alpine.data('choice', () => ({
-        multiple:1,
-        value: [],
+        multiple: false,
+        value: null,
         choicesInstance: null,
+        isUpdating: false,
         init() {
-            if(this.$wire.multiple === 0 ){
-                this.multiple=null;
-                //console.log('0');
-            }
+            this.multiple = Boolean(this.$wire.multiple);
+            this.value = this.$wire.selectedOption;
+
             this.$nextTick(() => {
                 this.initChoices();
 
-                // Livewire からのリフレッシュ命令を監視
                 this.$wire.on('refresh-choices', () => {
                     this.updateOptions();
                 });
 
-                // 外部からの selectedOption の変更を監視 (必要に応じて)
                 this.$watch('$wire.selectedOption', (val) => {
-                    // Choices 側の値と同期が取れていない場合のみセット
-                    const currentVal = this.choicesInstance.getValue(true);
-                    if (JSON.stringify(currentVal) !== JSON.stringify(val)) {
-                        this.choicesInstance.setChoiceByValue(val);
-                    }
+                    if (this.isUpdating) return;
+                    this.value = val;
+                    this.updateOptions();
                 });
             });
         },
@@ -108,30 +104,34 @@ new class extends Component
                     list: ['choices__list','[&[aria-expanded]]:!bg-white','[&[aria-expanded]]:dark:!bg-white/10','[&[aria-expanded]]:dark:disabled:!bg-white/[7%]'],
                     item: ['choices__item'],
                 }
-
             });
 
-            // 初期ロード
             this.updateOptions();
 
-            // 値変更時の同期
             this.$refs.select.addEventListener('change', () => {
+                this.isUpdating = true;
                 this.value = this.choicesInstance.getValue(true);
-                //console.log(this.value ?? (this.multiple ? [] : null));
                 this.$wire.selectedOption = this.value ?? (this.multiple ? [] : null);
+                this.$nextTick(() => { this.isUpdating = false; });
             });
         },
         async updateOptions() {
             const options = await this.$wire.getOptions();
-            let vals = this.multiple ? (Array.isArray(this.value) ? this.value : []) : [this.value];
-            vals = vals.map(x => String(x));
-            //console.log(options);
+            const currentSelected = this.value;
 
-            this.choicesInstance.setChoices(options.map(item => ({
+            let vals = this.multiple
+                ? (Array.isArray(currentSelected) ? currentSelected : (currentSelected ? [currentSelected] : []))
+                : (currentSelected ? [currentSelected] : []);
+
+            vals = vals.map(x => String(x));
+
+            const formattedOptions = options.map(item => ({
                 label: item[this.$wire.column || 'name'],
                 value: String(item.id),
                 selected: vals.includes(String(item.id)),
-            })));
+            }));
+
+            this.choicesInstance.setChoices(formattedOptions, 'value', 'label', true);
         },
 
         destroy() {

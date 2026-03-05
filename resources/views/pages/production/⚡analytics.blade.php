@@ -215,9 +215,11 @@ new class extends Component
     public function getChartFieldsProperty()
     {
         if ($this->chartProcessId) {
-            return ProductionAnnotationField::where('process_id', $this->chartProcessId)
+            $db=ProductionAnnotationField::where('process_id', $this->chartProcessId)
                 ->whereIn('type', ['number', 'material', 'material_quantity'])
                 ->get();
+            $this->dispatch('choices-refresh');
+            return $db;
         }
 
         return collect();
@@ -466,12 +468,14 @@ new class extends Component
             <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
                 <flux:heading size="lg">直近の製造実績</flux:heading>
                 <div class="flex gap-2">
-                    <flux:select wire:model.live="selectedItemId" placeholder="品目で絞り込み" class="w-48">
-                        <flux:select.option value="">すべての品目</flux:select.option>
-                        @foreach($this->items as $item)
-                            <flux:select.option value="{{ $item->id }}">{{ $item->name }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
+                    <livewire:monox_component::choices-select
+                        wire:model.live="selectedItemId"
+                        placeholder="品目で絞り込み"
+                        :options="$this->items"
+                        column="name"
+                        class="w-48"
+                        wire:key="select-1"
+                    />
                     <flux:select wire:model.live="selectedProcessId" placeholder="工程で絞り込み" class="w-48">
                         <flux:select.option value="">すべての工程</flux:select.option>
                         @foreach($this->processes as $process)
@@ -561,23 +565,29 @@ new class extends Component
                 </div>
 
                 <div class="flex flex-wrap gap-2">
-                    <flux:select wire:model.live="chartItemId" placeholder="品目" class="w-full md:w-40">
-                        <flux:select.option value="">品目を選択</flux:select.option>
-                        @foreach($this->items as $item)
-                            <flux:select.option value="{{ $item->id }}">{{ $item->name }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
+                    <livewire:monox_component::choices-select
+                        wire:model.live="chartItemId"
+                        placeholder="品目を選択"
+                        :options="$this->items"
+                        column="name"
+                        class="w-full md:w-40"
+                        wire:key="chart-select-1"
+                    />
                     <flux:select wire:model.live="chartProcessId" placeholder="工程" class="w-full md:w-40">
                         <flux:select.option value="">工程を選択</flux:select.option>
                         @foreach($this->chartProcesses as $process)
                             <flux:select.option value="{{ $process->id }}">{{ $process->name }}</flux:select.option>
                         @endforeach
                     </flux:select>
-                    <flux:select wire:model.live="chartFieldIds" multiple placeholder="入力項目" class="flex-1 min-w-[200px]">
-                        @foreach($this->chartFields as $field)
-                            <flux:select.option value="{{ $field->id }}">{{ $field->label }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
+                    <livewire:monox_component::choices-select
+                        wire:model.live="chartFieldIds"
+                        placeholder="入力項目を選択"
+                        :options="$this->chartFields"
+                        column="label"
+                        multiple
+                        class="flex-1 min-w-[200px]"
+                        wire:key="select-field-{{ $this->chartProcessId }}"
+                    />
                 </div>
             </div>
 

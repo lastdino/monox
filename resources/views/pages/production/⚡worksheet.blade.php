@@ -72,6 +72,15 @@ new class extends Component
 
     public $scannedLotCode = '';
 
+    public function updatedScannedLotCode(string $value): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        $this->handleLotScan($value);
+    }
+
     #[\Livewire\Attributes\On('qr-scanned')]
     public function handleLotScan(string $code): void
     {
@@ -1236,19 +1245,36 @@ new class extends Component
                         <div class="p-3 bg-zinc-50 dark:bg-white/5 rounded-lg border border-zinc-200 dark:border-zinc-700 space-y-4">
                             <div class="flex items-end gap-2">
                                 <div class="grow">
-                                    <flux:select wire:model="selectedLotId" label="使用ロット">
-                                        <flux:select.option value="">ロットを選択してください...</flux:select.option>
-                                        @foreach($lots as $lot)
-                                            <flux:select.option :value="$lot->id">
-                                                {{ $lot->item->name }} : {{ $lot->lot_number }} (在庫: {{ $lot->current_stock }})
-                                            </flux:select.option>
-                                        @endforeach
-                                    </flux:select>
+                                    <flux:field>
+                                        <flux:label>使用ロット</flux:label>
+                                        <livewire:monox_component::choices-select
+                                            wire:model.live="selectedLotId"
+                                            placeholder="使用ロット"
+                                            :options="$lots"
+                                            column="full_label"
+                                            class="w-full"
+                                            wire:key="lot-select-1"
+                                        />
+                                        <flux:error name="selectedLotId" />
+                                    </flux:field>
+
                                 </div>
-                                <livewire:monox_component::qr-scanner wire:model="scannedLotCode" />
+                                <livewire:monox_component::qr-scanner wire:model.live="scannedLotCode" />
                             </div>
 
-                            <flux:input wire:model="consumedQuantity" type="number" step="0.0001" label="使用数量" />
+                            <div class="flex items-center gap-4">
+                                <div class="grow">
+                                    <flux:input wire:model="consumedQuantity" type="number" step="0.0001" label="使用数量" />
+                                </div>
+                                @if($selectedLotId)
+                                    @php $selectedLot = \Lastdino\Monox\Models\Lot::find($selectedLotId); @endphp
+                                    @if($selectedLot)
+                                        <div class="pt-6">
+                                            <flux:text class="whitespace-nowrap">在庫: <span class="font-bold">{{ number_format($selectedLot->current_stock, 2) }}</span></flux:text>
+                                        </div>
+                                    @endif
+                                @endif
+                            </div>
                         </div>
                     </div>
                 @elseif($f->type === 'material_lot')
@@ -1266,24 +1292,57 @@ new class extends Component
                         @endphp
                         <div class="flex items-end gap-2">
                             <div class="grow">
-                                <flux:select wire:model="selectedLotId" label="使用ロット">
-                                    <flux:select.option value="">ロットを選択してください...</flux:select.option>
-                                    @foreach($lots as $lot)
-                                        <flux:select.option :value="$lot->id">
-                                            {{ $lot->item->name }} : {{ $lot->lot_number }} (在庫: {{ $lot->current_stock }})
-                                        </flux:select.option>
-                                    @endforeach
-                                </flux:select>
+                                <flux:field>
+                                    <flux:label>使用ロット</flux:label>
+                                    <livewire:monox_component::choices-select
+                                        wire:model.live="selectedLotId"
+                                        placeholder="使用ロット"
+                                        :options="$lots"
+                                        column="full_label"
+                                        class="w-full"
+                                        wire:key="lot-select-2"
+                                    />
+                                    <flux:error name="selectedLotId" />
+                                </flux:field>
+
                             </div>
-                            <livewire:monox_component::qr-scanner wire:model="scannedLotCode" />
+                            <livewire:monox_component::qr-scanner wire:model.live="scannedLotCode" />
                         </div>
+                        @if($selectedLotId)
+                            @php $selectedLot = \Lastdino\Monox\Models\Lot::find($selectedLotId); @endphp
+                            @if($selectedLot)
+                                <div class="px-1">
+                                    <flux:text size="sm">現在の在庫: <span class="font-bold">{{ number_format($selectedLot->current_stock, 2) }}</span></flux:text>
+                                </div>
+                            @endif
+                        @endif
                         @if($f->related_field_id)
                             <flux:subheading>※ 数量は別途「{{ $f->relatedField?->label }}」で入力してください。</flux:subheading>
                         @endif
                     </div>
                 @elseif($f->type === 'material_quantity')
                     <div class="space-y-4">
-                        <flux:input wire:model="consumedQuantity" type="number" step="0.0001" label="使用数量" />
+                        @php
+                            $selectedLot = null;
+                            if ($f->related_field_id) {
+                                $lotValue = \Lastdino\Monox\Models\ProductionAnnotationValue::where('production_record_id', $this->record->id)
+                                    ->where('field_id', $f->related_field_id)
+                                    ->first();
+                                if ($lotValue && $lotValue->lot_id) {
+                                    $selectedLot = \Lastdino\Monox\Models\Lot::find($lotValue->lot_id);
+                                }
+                            }
+                        @endphp
+                        <div class="flex items-center gap-4">
+                            <div class="grow">
+                                <flux:input wire:model="consumedQuantity" type="number" step="0.0001" label="使用数量" />
+                            </div>
+                            @if($selectedLot)
+                                <div class="pt-6">
+                                    <flux:text class="whitespace-nowrap">在庫: <span class="font-bold">{{ number_format($selectedLot->current_stock, 2) }}</span></flux:text>
+                                </div>
+                            @endif
+                        </div>
                         @if($f->min_value !== null || $f->max_value !== null)
                             <div class="text-xs text-zinc-500">許容範囲: {{ $f->min_value ?? '-∞' }} ～ {{ $f->max_value ?? '+∞' }}</div>
                         @endif

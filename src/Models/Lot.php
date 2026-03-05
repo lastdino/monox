@@ -20,6 +20,11 @@ class Lot extends Model
         'expired_at',
         'department_id',
     ];
+    /**
+     * 配列/JSON 変換時に含めるアクセサ
+     */
+    protected $appends = ['full_label'];
+
 
     public function department(): BelongsTo
     {
@@ -84,5 +89,9 @@ class Lot extends Model
     public function productionOrders(): HasMany
     {
         return $this->hasMany(ProductionOrder::class);
+    }
+    public function getFullLabelAttribute(): string
+    {
+        return "{$this->item->name} : {$this->lot_number} ";
     }
 }

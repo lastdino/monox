@@ -85,11 +85,18 @@ new class extends Component
     <div class="space-y-4">
         <div class="flex gap-4 items-end">
             <div class="flex-1">
-                <flux:select wire:model="selectedChildId" label="部品選択" placeholder="追加する部品を選択...">
-                    @foreach ($this->availableItems() as $availableItem)
-                        <flux:select.option :value="$availableItem->id">{{ $availableItem->code }}: {{ $availableItem->name }}</flux:select.option>
-                    @endforeach
-                </flux:select>
+                <flux:field>
+                    <flux:label>部品選択</flux:label>
+                    <livewire:monox_component::choices-select
+                        wire:model.live="selectedChildId"
+                        placeholder="追加する部品を選択..."
+                        :options="$this->availableItems()"
+                        column="name"
+                        class="w-full"
+                        wire:key="child-select"
+                    />
+                    <flux:error name="selectedChildId" />
+                </flux:field>
             </div>
             <div class="w-24">
                 <flux:input wire:model="quantity" type="number" step="0.0001" label="数量" />
