@@ -41,6 +41,15 @@ class Lot extends Model
         });
     }
 
+    public function scopeWithStock($query)
+    {
+        return $query->withSum('stockMovements', 'quantity')
+            ->whereHas('stockMovements', function ($q) {
+                $q->selectRaw('sum(quantity)')
+                    ->havingRaw('sum(quantity) > 0');
+            });
+    }
+
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
@@ -60,6 +69,10 @@ class Lot extends Model
 
     public function getCurrentStockAttribute(): float
     {
+        if (array_key_exists('stock_movements_sum_quantity', $this->attributes)) {
+            return (float) ($this->attributes['stock_movements_sum_quantity'] ?? 0);
+        }
+
         return $this->getStockAtDate(now());
     }
 

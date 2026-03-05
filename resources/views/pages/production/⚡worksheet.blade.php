@@ -1225,10 +1225,11 @@ new class extends Component
                             if ($f->linked_item_id) {
                                 $lots = \Lastdino\Monox\Models\Lot::where('item_id', $f->linked_item_id)
                                     ->available()
+                                    ->withStock()
                                     ->get();
                             } else {
                                 // 紐付けがない場合は全ロット（運用に合わせて要検討）
-                                $lots = \Lastdino\Monox\Models\Lot::available()->get();
+                                $lots = \Lastdino\Monox\Models\Lot::available()->withStock()->get();
                             }
                         @endphp
 
@@ -1257,9 +1258,10 @@ new class extends Component
                             if ($f->linked_item_id) {
                                 $lots = \Lastdino\Monox\Models\Lot::where('item_id', $f->linked_item_id)
                                     ->available()
+                                    ->withStock()
                                     ->get();
                             } else {
-                                $lots = \Lastdino\Monox\Models\Lot::available()->get();
+                                $lots = \Lastdino\Monox\Models\Lot::available()->withStock()->get();
                             }
                         @endphp
                         <div class="flex items-end gap-2">
