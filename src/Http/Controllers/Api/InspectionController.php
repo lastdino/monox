@@ -60,7 +60,10 @@ class InspectionController extends Controller
             ->keyBy('field_key');
 
         // 製造指図の取得
-        $productionOrder = ProductionOrder::where('lot_id', $lot->id)->first();
+        $productionOrder = ProductionOrder::where('lot_id', $lot->id)
+            ->where('status', 'in_progress')
+            ->latest('id')
+            ->first();
 
         if (! $productionOrder) {
             return response()->json([
@@ -122,7 +125,7 @@ class InspectionController extends Controller
                             'value' => $value,
                             'is_within_tolerance' => $this->checkTolerance($field, $value),
                             // note は更新しない（SN情報を維持）か、新しい note があれば追記
-                            'note' => "SN:{$sn}" . ($note ? " | {$note}" : ""),
+                            'note' => "SN:{$sn}".($note ? " | {$note}" : ''),
                         ]);
                     } else {
                         ProductionAnnotationValue::create([
@@ -130,7 +133,7 @@ class InspectionController extends Controller
                             'field_id' => $field->id,
                             'value' => $value,
                             'is_within_tolerance' => $this->checkTolerance($field, $value),
-                            'note' => "SN:{$sn}" . ($note ? " | {$note}" : ""),
+                            'note' => "SN:{$sn}".($note ? " | {$note}" : ''),
                         ]);
                     }
                 }
