@@ -8,13 +8,24 @@ use Lastdino\Monox\Models\ProductionAnnotationValue;
 class DistributionService
 {
     /**
-     * Build histogram data for a specific production record and annotation field.
+     * Build histogram data for a specific production record and annotation field(s).
      */
-    public static function buildDistributionData(int $productionRecordId, int $fieldId, ?int $bins = null, ?float $min = null, ?float $max = null, bool $showSpcLimits = true): array
+    public static function buildDistributionData(int $productionRecordId, array|int $fieldIds, ?int $bins = null, ?float $min = null, ?float $max = null, bool $showSpcLimits = true): array
     {
-        $field = ProductionAnnotationField::findOrFail($fieldId);
+        $fieldIds = (array) $fieldIds;
+        $fields = ProductionAnnotationField::whereIn('id', $fieldIds)->get();
+        $firstField = $fields->first();
+
+        if (! $firstField) {
+            return [
+                'labels' => [],
+                'datasets' => [],
+                'stats' => [],
+            ];
+        }
+
         $values = ProductionAnnotationValue::where('production_record_id', $productionRecordId)
-            ->where('field_id', $fieldId)
+            ->whereIn('field_id', $fieldIds)
             ->pluck('value')
             ->map(fn ($v) => (float) $v)
             ->filter()
@@ -38,9 +49,9 @@ class DistributionService
             $bins = (int) ceil(1 + log($count, 2));
         }
 
-        // Default min/max: Use field spec limits if available, otherwise data limits
-        $min = $min ?? $field->min_value ?? $dataMin;
-        $max = $max ?? $field->max_value ?? $dataMax;
+        // Default min/max: Use first field spec limits if available, otherwise data limits
+        $min = $min ?? $firstField->min_value ?? $dataMin;
+        $max = $max ?? $firstField->max_value ?? $dataMax;
 
         $stats = [
             'count' => $count,
@@ -66,8 +77,8 @@ class DistributionService
             }
 
             if ($stdDev > 0) {
-                $lsl = $field->min_value;
-                $usl = $field->max_value;
+                $lsl = $firstField->min_value;
+                $usl = $firstField->max_value;
 
                 if ($lsl !== null && $usl !== null) {
                     $stats['cp'] = round(($usl - $lsl) / (6 * $stdDev), 2);
@@ -123,10 +134,10 @@ class DistributionService
             ],
             'stats' => $stats,
             'field' => [
-                'label' => $field->label,
-                'min' => $field->min_value,
-                'max' => $field->max_value,
-                'target' => $field->target_value,
+                'label' => count($fieldIds) > 1 ? '複数項目' : $firstField->label,
+                'min' => $firstField->min_value,
+                'max' => $firstField->max_value,
+                'target' => $firstField->target_value,
             ],
             'range' => [
                 'min' => $min,

@@ -36,7 +36,7 @@ new class extends Component
 
     public ?int $selectedRecordId = null;
 
-    public ?int $selectedFieldId = null;
+    public array $selectedFieldIds = [];
 
     public ?int $bins = null;
 
@@ -219,10 +219,11 @@ new class extends Component
     public function getChartFieldsProperty()
     {
         if ($this->chartProcessId) {
-            $db=ProductionAnnotationField::where('process_id', $this->chartProcessId)
+            $db = ProductionAnnotationField::where('process_id', $this->chartProcessId)
                 ->whereIn('type', ['number', 'material', 'material_quantity'])
                 ->get();
             $this->dispatch('choices-refresh');
+
             return $db;
         }
 
@@ -254,7 +255,7 @@ new class extends Component
     {
         $this->dispatch('chart-data-updated', data: $this->trendChartData());
 
-        if ($this->selectedRecordId && $this->selectedFieldId) {
+        if ($this->selectedRecordId && ! empty($this->selectedFieldIds)) {
             $this->refreshDistribution();
         }
     }
@@ -266,14 +267,14 @@ new class extends Component
         }
     }
 
-    public function showDistribution(int $recordId, int $fieldId): void
+    public function showDistribution(int $recordId, array|int $fieldIds): void
     {
         $this->selectedRecordId = $recordId;
-        $this->selectedFieldId = $fieldId;
+        $this->selectedFieldIds = (array) $fieldIds;
 
         $this->distributionData = \Lastdino\Monox\Services\DistributionService::buildDistributionData(
             $recordId,
-            $fieldId,
+            $this->selectedFieldIds,
             null,
             null,
             null,
@@ -290,13 +291,13 @@ new class extends Component
 
     public function refreshDistribution(): void
     {
-        if (! $this->selectedRecordId || ! $this->selectedFieldId) {
+        if (! $this->selectedRecordId || empty($this->selectedFieldIds)) {
             return;
         }
 
         $this->distributionData = \Lastdino\Monox\Services\DistributionService::buildDistributionData(
             $this->selectedRecordId,
-            $this->selectedFieldId,
+            $this->selectedFieldIds,
             $this->bins,
             $this->minRange,
             $this->maxRange,
@@ -689,11 +690,11 @@ new class extends Component
                            const recordId = chartData.record_ids[index];
                            const count = chartData.counts[index];
 
-                           // 複数項目選択時は最初の項目を対象とする（とりあえずの仕様）
-                           const fieldId = $wire.chartFieldIds[0];
+                           // 複数項目選択時は全項目を対象とする
+                           const fieldIds = $wire.chartFieldIds;
 
                            if (count > 1) {
-                               $wire.showDistribution(recordId, fieldId);
+                               $wire.showDistribution(recordId, fieldIds);
                            } else {
                                Flux.toast('全数データがありません（単発入力です）');
                            }
