@@ -69,9 +69,13 @@ new class extends Component
             this.value = this.$wire.selectedOption;
 
             this.$nextTick(() => {
+                if (this.choicesInstance) {
+                    this.choicesInstance.removeActiveItems();
+                }
                 this.initChoices();
 
-                this.$wire.on('refresh-choices', () => {
+                this.$wire.on('refresh', () => {
+                    //this.value =this.$wire.selectedOption;
                     this.updateOptions();
                 });
 

@@ -1258,7 +1258,7 @@ new class extends Component
                                             :options="$lots"
                                             column="full_label"
                                             class="w-full"
-                                            wire:key="lot-select-1"
+                                            wire:key="lot-select-1-{{ $activeFieldId }}"
                                         />
                                         <flux:error name="selectedLotId" />
                                     </flux:field>
@@ -1305,7 +1305,7 @@ new class extends Component
                                         :options="$lots"
                                         column="full_label"
                                         class="w-full"
-                                        wire:key="lot-select-2"
+                                        wire:key="lot-select-2-{{ $activeFieldId }}"
                                     />
                                     <flux:error name="selectedLotId" />
                                 </flux:field>
